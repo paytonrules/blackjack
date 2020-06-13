@@ -1,14 +1,14 @@
 use im::{vector, Vector};
-use crate::deck::{Card, Rank, Suit};
+use crate::deck::{Card, Rank};
 
 #[derive(PartialEq, Debug)]
 struct Score(u8);
 
-#[derive(Clone)]
-struct Hand(Vector<Card>);
+#[derive(Clone, Debug, PartialEq)]
+pub struct Hand(Vector<Card>);
 
 impl Hand {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Hand(vector!())
     }
 
@@ -45,6 +45,8 @@ impl Hand {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::deck::{Suit};
+
     #[test]
     fn an_empty_hand_has_a_score_of_zero() {
         let hand = Hand::new();

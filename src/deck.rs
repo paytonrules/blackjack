@@ -1,4 +1,4 @@
-use im::{Vector};
+use im::{vector, Vector};
 
 #[derive(PartialEq, Debug)]
 pub struct Value(pub u8);
@@ -56,12 +56,12 @@ impl Rank {
 struct EmptyDeckError;
 
 #[derive(Debug, Clone, PartialEq)]
-struct Deck {
-    cards: Vector<Card>,
+pub struct Deck {
+    pub cards: Vector<Card>,
 }
 
 impl Deck {
-    fn Deal(self) -> Result<(Deck, Card), EmptyDeckError> {
+    fn deal(self) -> Result<(Deck, Card), EmptyDeckError> {
         let mut deck = self.clone();
         let card = deck.cards.pop_front().ok_or(EmptyDeckError)?;
         Ok((deck, card))
@@ -113,7 +113,7 @@ mod tests {
             ),
         };
 
-        let (new_deck, card) = deck.Deal()?;
+        let (new_deck, card) = deck.deal()?;
 
         assert_eq!(
             card,
@@ -138,7 +138,7 @@ mod tests {
     fn deal_is_not_okay_if_the_deck_is_empty() {
         let deck = Deck { cards: vector!() };
 
-        let result = deck.Deal();
+        let result = deck.deal();
 
         assert!(result.is_err(), "Cannot deal from an empty deck");
     }
