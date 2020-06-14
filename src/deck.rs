@@ -1,15 +1,17 @@
-use im::{vector, Vector};
+use im::Vector;
+use std::error::Error;
+use std::fmt;
 
 #[derive(PartialEq, Debug)]
 pub struct Value(pub u8);
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Card {
     pub suit: Suit,
     pub rank: Rank,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Suit {
     Heart,
     Diamond,
@@ -53,7 +55,15 @@ impl Rank {
     }
 }
 #[derive(Debug)]
-struct EmptyDeckError;
+pub struct EmptyDeckError;
+
+impl Error for EmptyDeckError {}
+
+impl fmt::Display for EmptyDeckError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "You're dealing from an empty deck!")
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Deck {
@@ -61,7 +71,7 @@ pub struct Deck {
 }
 
 impl Deck {
-    fn deal(self) -> Result<(Deck, Card), EmptyDeckError> {
+    pub fn deal(self) -> Result<(Deck, Card), EmptyDeckError> {
         let mut deck = self.clone();
         let card = deck.cards.pop_front().ok_or(EmptyDeckError)?;
         Ok((deck, card))
@@ -71,6 +81,7 @@ impl Deck {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use im::vector;
 
     #[test]
     fn numeric_card_ranks_are_their_values() {

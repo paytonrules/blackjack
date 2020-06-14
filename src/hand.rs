@@ -12,7 +12,7 @@ impl Hand {
         Hand(vector!())
     }
 
-    fn add(self, card: Card) -> Self {
+    pub fn add(self, card: Card) -> Self {
         let mut new_hand = self.clone();
         new_hand.0.push_back(card);
         new_hand
