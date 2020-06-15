@@ -1,4 +1,4 @@
-use im::Vector;
+use im::{Vector, vector};
 use std::error::Error;
 use std::fmt;
 
@@ -71,6 +71,14 @@ pub struct Deck {
 }
 
 impl Deck {
+    pub fn new() -> Self {
+        Deck { cards: vector!() }
+    }
+
+    pub fn new_with_cards(cards: Vector<Card>) -> Self {
+        Deck { cards }
+    }
+
     pub fn deal(self) -> Result<(Deck, Card), EmptyDeckError> {
         let mut deck = self.clone();
         let card = deck.cards.pop_front().ok_or(EmptyDeckError)?;
