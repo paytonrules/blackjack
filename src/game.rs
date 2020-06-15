@@ -1,8 +1,8 @@
-use crate::hand::Hand;
 use crate::deck::Deck;
+use crate::hand::Hand;
+use im::vector;
 use std::error::Error;
 use std::fmt;
-use im::vector;
 
 #[derive(Debug, PartialEq)]
 struct Context {
@@ -14,9 +14,9 @@ struct Context {
 impl Context {
     fn new() -> Self {
         Context {
-            deck: Deck{cards: vector!()},
+            deck: Deck { cards: vector!() },
             player_hand: Hand::new(),
-            computer_hand: Hand::new()
+            computer_hand: Hand::new(),
         }
     }
 }
@@ -46,18 +46,16 @@ fn deal(state: GameState) -> Result<GameState, Box<dyn std::error::Error>> {
         GameState::Ready(context) => {
             let (new_deck, first_card) = context.deck.deal()?;
             let (new_deck, second_card) = new_deck.deal()?;
-            let player_hand = Hand::new()
-                .add(first_card)
-                .add(second_card);
+            let player_hand = Hand::new().add(first_card).add(second_card);
 
             let new_context = Context {
                 player_hand: player_hand,
                 computer_hand: Hand::new(),
-                deck: Deck {cards: vector!()}
+                deck: Deck { cards: vector!() },
             };
 
             Ok(GameState::WaitingForPlayer(new_context))
-        },
+        }
         _ => Err(Box::new(InvalidStateError {})),
     }
 }
@@ -65,31 +63,44 @@ fn deal(state: GameState) -> Result<GameState, Box<dyn std::error::Error>> {
 #[cfg(test)]
 mod game_state_machine {
     use super::*;
-    use im::vector;
     use crate::deck::{Card, Rank, Suit};
+    use im::{vector, Vector};
+
+    fn minimal_cards() -> Vector<Card> {
+        vector!(
+            Card {
+                rank: Rank::Ace,
+                suit: Suit::Heart
+            },
+            Card {
+                rank: Rank::King,
+                suit: Suit::Spade
+            },
+            Card {
+                rank: Rank::Nine,
+                suit: Suit::Club
+            },
+            Card {
+                rank: Rank::Ace,
+                suit: Suit::Diamond
+            }
+        )
+    }
 
     #[test]
     fn deal_transitions_from_ready_to_waiting_for_player() -> Result<(), Box<dyn Error>> {
-        let minimal_cards = vector!(
-            Card {rank: Rank::Ace, suit: Suit::Heart},
-            Card {rank: Rank::King, suit: Suit::Spade},
-            Card {rank: Rank::Nine, suit: Suit::Club},
-            Card {rank: Rank::Ace, suit: Suit::Diamond});        
         let game_state = GameState::Ready(Context {
-            deck: Deck {cards: minimal_cards.clone()},
+            deck: Deck {
+                cards: minimal_cards().clone(),
+            },
             computer_hand: Hand::new(),
-            player_hand: Hand::new() 
+            player_hand: Hand::new(),
         });
 
         let new_game_state = deal(game_state)?;
         match new_game_state {
-            GameState::WaitingForPlayer(_) => {
-                Ok(())
-            }
-            _ => {
-                assert!(false, "Deal transitioned to the wrong state");
-                Ok(()) // seems wrong - shouldn't I actually return an error
-            }
+            GameState::WaitingForPlayer(_) => Ok(()),
+            _ => panic!("Deal transitioned to the wrong state!"),
         }
     }
 
@@ -104,28 +115,26 @@ mod game_state_machine {
 
     #[test]
     fn deal_gives_the_player_and_computer_hands() -> Result<(), Box<dyn Error>> {
-        let cards = vector!(
-            Card {rank: Rank::Ace, suit: Suit::Heart},
-            Card {rank: Rank::King, suit: Suit::Spade},
-            Card {rank: Rank::Nine, suit: Suit::Club},
-            Card {rank: Rank::Ace, suit: Suit::Diamond});
-        let deck = Deck { cards: cards.clone() };
+        let cards = minimal_cards();
+        let deck = Deck {
+            cards: cards.clone(),
+        };
         let context = Context {
             deck,
             player_hand: Hand::new(),
-            computer_hand: Hand::new()
+            computer_hand: Hand::new(),
         };
 
         let game_state = GameState::Ready(context);
 
         let new_game_state = deal(game_state)?;
         if let GameState::WaitingForPlayer(context) = new_game_state {
-            assert_eq!(Deck{cards: vector!()}, context.deck);
+            assert_eq!(Deck { cards: vector!() }, context.deck);
             assert_eq!(Hand::new().add(cards[0]).add(cards[1]), context.player_hand);
             // computer_hand has two cards
             Ok(())
         } else {
-            Err(Box::new(InvalidStateError{}))
+            Err(Box::new(InvalidStateError {}))
         }
     }
 }
