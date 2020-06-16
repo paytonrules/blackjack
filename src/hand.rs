@@ -1,5 +1,5 @@
-use im::{vector, Vector};
 use crate::deck::{Card, Rank};
+use im::{vector, Vector};
 
 #[derive(PartialEq, Debug)]
 struct Score(u8);
@@ -42,10 +42,36 @@ impl Hand {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct DealerHand {
+    hand: Hand
+}
+
+impl DealerHand {
+    pub fn new() -> Self {
+        DealerHand {hand: Hand::new()}
+    }
+
+    pub fn add(self, card: Card) -> Self {
+        let mut new_hand = self.clone();
+        new_hand.hand = new_hand.hand.add(card);
+        new_hand
+    }
+
+    fn score(self) -> Score {
+        self.hand.score()
+    }
+
+    fn hidden_card(&self) -> Option<&Card> {
+        self.hand.0.front() 
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::deck::{Suit};
+    use crate::deck::Suit;
 
     #[test]
     fn an_empty_hand_has_a_score_of_zero() {
@@ -141,5 +167,40 @@ mod tests {
             .score();
 
         assert_eq!(score, Score(22))
+    }
+
+    #[test]
+    fn a_dealer_hands_first_card_is_invisible() {
+        let dealer_hand = DealerHand::new()
+            .add(Card {
+                rank: Rank::Ten,
+                suit: Suit::Heart,
+            })
+            .add(Card {
+                rank: Rank::Ten,
+                suit: Suit::Heart,
+            });
+
+        assert_eq!(
+            dealer_hand.hidden_card(),
+            Some(&Card {
+                rank: Rank::Ten,
+                suit: Suit::Heart,
+            }));
+    }
+
+    #[test]
+    fn a_dealer_hands_score_includes_its_invisible_card() {
+        let dealer_hand = DealerHand::new()
+            .add(Card {
+                rank: Rank::Ten,
+                suit: Suit::Heart,
+            })
+            .add(Card {
+                rank: Rank::Ten,
+                suit: Suit::Heart,
+            });
+
+        assert_eq!(dealer_hand.score(), Score(20));
     }
 }

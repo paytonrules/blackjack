@@ -1,6 +1,5 @@
 use crate::deck::Deck;
-use crate::hand::Hand;
-use im::vector;
+use crate::hand::{Hand, DealerHand};
 use std::error::Error;
 use std::fmt;
 
@@ -8,7 +7,7 @@ use std::fmt;
 struct Context {
     deck: Deck,
     player_hand: Hand,
-    computer_hand: Hand,
+    computer_hand: DealerHand,
 }
 
 impl Context {
@@ -16,7 +15,7 @@ impl Context {
         Context {
             deck: Deck::new(),
             player_hand: Hand::new(),
-            computer_hand: Hand::new(),
+            computer_hand: DealerHand::new(),
         }
     }
 }
@@ -49,7 +48,7 @@ fn deal(state: GameState) -> Result<GameState, Box<dyn std::error::Error>> {
             let (new_deck, third_card) = new_deck.deal()?;
             let (new_deck, fourth_card) = new_deck.deal()?;
             let player_hand = Hand::new().add(first_card).add(second_card);
-            let computer_hand = Hand::new().add(third_card).add(fourth_card);
+            let computer_hand = DealerHand::new().add(third_card).add(fourth_card);
 
             let new_context = Context {
                 player_hand: player_hand,
@@ -94,7 +93,7 @@ mod game_state_machine {
     fn deal_transitions_from_ready_to_waiting_for_player() -> Result<(), Box<dyn Error>> {
         let game_state = GameState::Ready(Context {
             deck: Deck::new_with_cards(minimal_cards().clone()),
-            computer_hand: Hand::new(),
+            computer_hand: DealerHand::new(),
             player_hand: Hand::new(),
         });
 
@@ -120,7 +119,7 @@ mod game_state_machine {
         let context = Context {
             deck: Deck::new_with_cards(cards.clone()),
             player_hand: Hand::new(),
-            computer_hand: Hand::new(),
+            computer_hand: DealerHand::new(),
         };
 
         let game_state = GameState::Ready(context);
@@ -128,7 +127,7 @@ mod game_state_machine {
         if let GameState::WaitingForPlayer(context) = deal(game_state)? {
             assert_eq!(Deck::new(), context.deck);
             assert_eq!(Hand::new().add(cards[0]).add(cards[1]), context.player_hand);
-            assert_eq!(Hand::new().add(cards[2]).add(cards[3]), context.computer_hand);
+            assert_eq!(DealerHand::new().add(cards[2]).add(cards[3]), context.computer_hand);
             Ok(())
         } else {
             Err(Box::new(InvalidStateError {}))
