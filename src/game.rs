@@ -1,5 +1,5 @@
 use crate::deck::Deck;
-use crate::hand::{Hand, DealerHand};
+use crate::hand::{DealerHand, Hand, Score};
 use std::error::Error;
 use std::fmt;
 
@@ -18,6 +18,10 @@ impl Context {
             computer_hand: DealerHand::new(),
         }
     }
+
+    fn dealer_blackjack(&self) -> bool {
+        self.computer_hand.score() == Score(21)
+    }
 }
 
 #[derive(Debug)]
@@ -35,9 +39,8 @@ impl fmt::Display for InvalidStateError {
 enum GameState {
     Ready(Context),
     WaitingForPlayer(Context),
-    CheckingPlayerHand(Context),
-    PlayerLoses(Context),
-    PlayingDealerHand(Context),
+    DealerWins(Context),
+    PlayerWins(Context),
 }
 
 fn deal(state: GameState) -> Result<GameState, Box<dyn std::error::Error>> {
@@ -49,14 +52,19 @@ fn deal(state: GameState) -> Result<GameState, Box<dyn std::error::Error>> {
             let (new_deck, fourth_card) = new_deck.deal()?;
             let player_hand = Hand::new().add(first_card).add(second_card);
             let computer_hand = DealerHand::new().add(third_card).add(fourth_card);
-
+            
             let new_context = Context {
-                player_hand: player_hand,
-                computer_hand: computer_hand,
+                player_hand,
+                computer_hand,
                 deck: Deck::new(),
             };
+            
+            if new_context.dealer_blackjack() {
+                Ok(GameState::DealerWins(new_context))
+            } else {
+                Ok(GameState::WaitingForPlayer(new_context))
+            }
 
-            Ok(GameState::WaitingForPlayer(new_context))
         }
         _ => Err(Box::new(InvalidStateError {})),
     }
@@ -127,10 +135,53 @@ mod game_state_machine {
         if let GameState::WaitingForPlayer(context) = deal(game_state)? {
             assert_eq!(Deck::new(), context.deck);
             assert_eq!(Hand::new().add(cards[0]).add(cards[1]), context.player_hand);
-            assert_eq!(DealerHand::new().add(cards[2]).add(cards[3]), context.computer_hand);
+            assert_eq!(
+                DealerHand::new().add(cards[2]).add(cards[3]),
+                context.computer_hand
+            );
             Ok(())
         } else {
             Err(Box::new(InvalidStateError {}))
         }
     }
+
+    #[test]
+    fn deal_goes_to_dealer_won_when_dealer_has_blackjack() -> Result<(), Box<dyn Error>> {
+        let dealer_blackjack_hand = vector!(
+            Card {
+                suit: Suit::Heart,
+                rank: Rank::One
+            },
+            Card {
+                suit: Suit::Heart,
+                rank: Rank::One
+            },
+            Card {
+                suit: Suit::Heart,
+                rank: Rank::Ace
+            },
+            Card {
+                suit: Suit::Heart,
+                rank: Rank::Ten
+            },
+        );
+        let context = Context {
+            deck: Deck::new_with_cards(dealer_blackjack_hand),
+            player_hand: Hand::new(),
+            computer_hand: DealerHand::new(),
+        };
+
+        let game_state = GameState::Ready(context);
+
+        let new_state = deal(game_state)?;
+        match new_state {
+            GameState::DealerWins(_) => Ok(()),
+            _ => panic!("Deal transitioned to the wrong state!"),
+        }
+    }
+
+    // test function - card with ignored suit
+    // factory function - context with deck (real func)
+    // test a deck with more than four cards
+    // Ready is the initial state - it doesn't context, it could start with one.
 }

@@ -2,7 +2,7 @@ use crate::deck::{Card, Rank};
 use im::{vector, Vector};
 
 #[derive(PartialEq, Debug)]
-struct Score(u8);
+pub struct Score(pub u8);
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Hand(Vector<Card>);
@@ -18,7 +18,7 @@ impl Hand {
         new_hand
     }
 
-    fn score(self) -> Score {
+    fn score(&self) -> Score {
         let hard_value = self.0.iter().map(|card| card.rank.to_value().0).sum();
 
         let mut soft_value = hard_value;
@@ -33,7 +33,7 @@ impl Hand {
         Score(soft_value)
     }
 
-    fn ace_count(self) -> usize {
+    fn ace_count(&self) -> usize {
         self.0
             .iter()
             .map(|card| card.rank)
@@ -58,7 +58,7 @@ impl DealerHand {
         new_hand
     }
 
-    fn score(self) -> Score {
+    pub fn score(self) -> Score {
         self.hand.score()
     }
 
