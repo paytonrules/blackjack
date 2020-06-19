@@ -12,7 +12,7 @@ impl Hand {
         Hand(vector!())
     }
 
-    pub fn add(self, card: Card) -> Self {
+    pub fn add(&self, card: Card) -> Self {
         let mut new_hand = self.clone();
         new_hand.0.push_back(card);
         new_hand
@@ -52,13 +52,13 @@ impl DealerHand {
         DealerHand {hand: Hand::new()}
     }
 
-    pub fn add(self, card: Card) -> Self {
+    pub fn add(&self, card: Card) -> Self {
         let mut new_hand = self.clone();
         new_hand.hand = new_hand.hand.add(card);
         new_hand
     }
 
-    pub fn score(self) -> Score {
+    pub fn score(&self) -> Score {
         self.hand.score()
     }
 
@@ -85,7 +85,7 @@ mod tests {
     fn a_hand_with_one_card_has_a_score_of_that_cards_rank() {
         let score = Hand::new()
             .add(Card {
-                rank: Rank::One,
+                rank: Rank::Two,
                 suit: Suit::Heart,
             })
             .score();
@@ -97,7 +97,7 @@ mod tests {
     fn a_hand_with_two_cards_adds_their_values() {
         let score = Hand::new()
             .add(Card {
-                rank: Rank::One,
+                rank: Rank::Two,
                 suit: Suit::Heart,
             })
             .add(Card {

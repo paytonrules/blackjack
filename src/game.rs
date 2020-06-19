@@ -19,6 +19,14 @@ impl Context {
         }
     }
 
+    fn new_with_deck(deck: Deck) -> Self {
+        Context {
+            deck,
+            player_hand: Hand::new(),
+            computer_hand: DealerHand::new(),
+        }
+    }
+
     fn dealer_blackjack(&self) -> bool {
         self.computer_hand.score() == Score(21)
     }
@@ -52,19 +60,18 @@ fn deal(state: GameState) -> Result<GameState, Box<dyn std::error::Error>> {
             let (new_deck, fourth_card) = new_deck.deal()?;
             let player_hand = Hand::new().add(first_card).add(second_card);
             let computer_hand = DealerHand::new().add(third_card).add(fourth_card);
-            
+
             let new_context = Context {
                 player_hand,
                 computer_hand,
-                deck: Deck::new(),
+                deck: new_deck,
             };
-            
+
             if new_context.dealer_blackjack() {
                 Ok(GameState::DealerWins(new_context))
             } else {
                 Ok(GameState::WaitingForPlayer(new_context))
             }
-
         }
         _ => Err(Box::new(InvalidStateError {})),
     }
@@ -76,34 +83,25 @@ mod game_state_machine {
     use crate::deck::{Card, Rank, Suit};
     use im::{vector, Vector};
 
+    fn cards(ranks: Vector<Rank>) -> Vector<Card> {
+        ranks
+            .iter()
+            .map(|rank| Card {
+                rank: *rank,
+                suit: Suit::Heart,
+            })
+            .collect()
+    }
+
     fn minimal_cards() -> Vector<Card> {
-        vector!(
-            Card {
-                rank: Rank::Ace,
-                suit: Suit::Heart
-            },
-            Card {
-                rank: Rank::King,
-                suit: Suit::Spade
-            },
-            Card {
-                rank: Rank::Nine,
-                suit: Suit::Club
-            },
-            Card {
-                rank: Rank::Ace,
-                suit: Suit::Diamond
-            }
-        )
+        cards(vector!(Rank::Nine, Rank::Ace, Rank::Nine, Rank::Ace))
     }
 
     #[test]
     fn deal_transitions_from_ready_to_waiting_for_player() -> Result<(), Box<dyn Error>> {
-        let game_state = GameState::Ready(Context {
-            deck: Deck::new_with_cards(minimal_cards().clone()),
-            computer_hand: DealerHand::new(),
-            player_hand: Hand::new(),
-        });
+        let game_state = GameState::Ready(Context::new_with_deck(Deck::new_with_cards(
+            minimal_cards(),
+        )));
 
         let new_game_state = deal(game_state)?;
         match new_game_state {
@@ -124,12 +122,7 @@ mod game_state_machine {
     #[test]
     fn deal_gives_the_player_and_computer_hands() -> Result<(), Box<dyn Error>> {
         let cards = minimal_cards();
-        let context = Context {
-            deck: Deck::new_with_cards(cards.clone()),
-            player_hand: Hand::new(),
-            computer_hand: DealerHand::new(),
-        };
-
+        let context = Context::new_with_deck(Deck::new_with_cards(cards.clone()));
         let game_state = GameState::Ready(context);
 
         if let GameState::WaitingForPlayer(context) = deal(game_state)? {
@@ -147,30 +140,8 @@ mod game_state_machine {
 
     #[test]
     fn deal_goes_to_dealer_won_when_dealer_has_blackjack() -> Result<(), Box<dyn Error>> {
-        let dealer_blackjack_hand = vector!(
-            Card {
-                suit: Suit::Heart,
-                rank: Rank::One
-            },
-            Card {
-                suit: Suit::Heart,
-                rank: Rank::One
-            },
-            Card {
-                suit: Suit::Heart,
-                rank: Rank::Ace
-            },
-            Card {
-                suit: Suit::Heart,
-                rank: Rank::Ten
-            },
-        );
-        let context = Context {
-            deck: Deck::new_with_cards(dealer_blackjack_hand),
-            player_hand: Hand::new(),
-            computer_hand: DealerHand::new(),
-        };
-
+        let dealer_blackjack_hand = cards(vector!(Rank::Two, Rank::Two, Rank::Ace, Rank::Ten));
+        let context = Context::new_with_deck(Deck::new_with_cards(dealer_blackjack_hand));
         let game_state = GameState::Ready(context);
 
         let new_state = deal(game_state)?;
@@ -180,8 +151,19 @@ mod game_state_machine {
         }
     }
 
-    // test function - card with ignored suit
-    // factory function - context with deck (real func)
-    // test a deck with more than four cards
-    // Ready is the initial state - it doesn't context, it could start with one.
+    #[test]
+    fn deal_keeps_the_non_dealt_cards_in_the_deck() -> Result<(), Box<dyn Error>> {
+        let typical_hand = cards(
+            vector!(Rank::Two, Rank::Two, Rank::Two, Rank::Ten, Rank::Nine));
+        let context = Context::new_with_deck(Deck::new_with_cards(typical_hand));
+        let game_state = GameState::Ready(context);
+
+        if let GameState::WaitingForPlayer(context) = deal(game_state)? {
+            assert_eq!(Deck::new_with_cards(cards(vector!(Rank::Nine))), context.deck);
+            Ok(())
+        } else {
+            panic!("Deal transitionedd to the wrong state!");
+        }
+    }
+    // Ready is the initial state - it doesn't need context, it could start with one.
 }
