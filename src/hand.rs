@@ -90,7 +90,7 @@ mod tests {
             })
             .score();
 
-        assert_eq!(score, Score(1))
+        assert_eq!(score, Score(2))
     }
 
     #[test]
@@ -106,7 +106,7 @@ mod tests {
             })
             .score();
 
-        assert_eq!(score, Score(4))
+        assert_eq!(score, Score(5))
     }
 
     #[test]
