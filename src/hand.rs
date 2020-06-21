@@ -18,7 +18,7 @@ impl Hand {
         new_hand
     }
 
-    fn score(&self) -> Score {
+    pub fn score(&self) -> Score {
         let hard_value = self.0.iter().map(|card| card.rank.to_value().0).sum();
 
         let mut soft_value = hard_value;
