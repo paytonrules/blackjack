@@ -84,16 +84,12 @@ fn deal(state: &GameState) -> Result<GameState, Box<dyn std::error::Error>> {
                 deck: new_deck,
             };
 
-            if new_context.double_blackjack() {
-                Ok(GameState::Draw(new_context))
-            } else if new_context.dealer_blackjack() {
-                Ok(GameState::DealerWins(new_context))
-            } else if new_context.player_blackjack() {
-                Ok(GameState::PlayerWins(new_context))
-            }
-            else {
-                Ok(GameState::WaitingForPlayer(new_context))
-            }
+            Ok(match new_context {
+                _ if new_context.double_blackjack() => GameState::Draw(new_context),
+                _ if new_context.dealer_blackjack() => GameState::DealerWins(new_context),
+                _ if new_context.player_blackjack() => GameState::PlayerWins(new_context),
+                _ => GameState::WaitingForPlayer(new_context)
+            })
         }
         _ => Err(Box::new(InvalidStateError {})),
     }
@@ -216,5 +212,4 @@ mod game_state_machine {
             _ => panic!("Deal transitioned to the wrong state!"),
         }
     }
-
 }
