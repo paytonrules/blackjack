@@ -53,7 +53,7 @@ impl Context {
         }
     }
 
-    fn deal_initial_hands(&self) -> Result<Context, Box<dyn std::error::Error>> {
+    fn deal_initial_hands(&self) -> Result<Context, Box<dyn Error>> {
         let (new_deck, first_card) = self.deck.deal()?;
         let (new_deck, second_card) = new_deck.deal()?;
         let (new_deck, third_card) = new_deck.deal()?;
@@ -68,7 +68,7 @@ impl Context {
         })
     }
 
-    fn deal_player_card(&self) -> Result<Context, Box<dyn std::error::Error>> {
+    fn deal_player_card(&self) -> Result<Context, Box<dyn Error>> {
         let (deck, card) = self.deck.deal()?;
         let player_hand = self.player_hand.add(card);
 
@@ -79,7 +79,7 @@ impl Context {
         })
     }
 
-    fn play_dealer_hand(&self) -> Result<Context, Box<dyn std::error::Error>> {
+    fn play_dealer_hand(&self) -> Result<Context, Box<dyn Error>> {
         let mut new_context = self.clone();
         while new_context.dealer_score() < Score(17) {
             let (deck, card) = new_context.deck.deal()?;
@@ -137,7 +137,7 @@ impl fmt::Display for InvalidStateError {
     }
 }
 
-fn deal(state: &GameState) -> Result<GameState, Box<dyn std::error::Error>> {
+fn deal(state: &GameState) -> Result<GameState, Box<dyn Error>> {
     match state {
         GameState::Ready(context) => {
             let new_context = context.deal_initial_hands()?;
@@ -153,11 +153,13 @@ fn deal(state: &GameState) -> Result<GameState, Box<dyn std::error::Error>> {
     }
 }
 
-fn hit(state: &GameState) -> Result<GameState, Box<dyn std::error::Error>> {
+fn hit(state: &GameState) -> Result<GameState, Box<dyn Error>> {
     match state {
         GameState::WaitingForPlayer(context) => {
             let new_context = context.deal_player_card()?;
+
             Ok(match new_context {
+                _ if new_context.player_blackjack() => stand(&GameState::WaitingForPlayer(new_context))?,
                 _ if new_context.player_busts() => GameState::DealerWins(new_context),
                 _ => GameState::WaitingForPlayer(new_context),
             })
@@ -166,7 +168,7 @@ fn hit(state: &GameState) -> Result<GameState, Box<dyn std::error::Error>> {
     }
 }
 
-fn stand(state: &GameState) -> Result<GameState, Box<dyn std::error::Error>> {
+fn stand(state: &GameState) -> Result<GameState, Box<dyn Error>> {
     match state {
         GameState::WaitingForPlayer(context) => {
             let new_context = context.play_dealer_hand()?;
@@ -350,6 +352,29 @@ mod game_state_machine {
     }
 
     #[test]
+    fn player_hits_and_gets_blackjack_transitions_to_endgame() -> Result<(), Box<dyn Error>> {
+        let cards = cards(vector!(
+            Rank::Ten,
+            Rank::Ten,
+            Rank::Ten,
+            Rank::Seven,
+            Rank::Ace
+        ));
+        let context = Context::new_with_cards(cards);
+        let game = deal(&GameState::Ready(context))?;
+
+        let player_hits = hit(&game)?;
+
+        match player_hits {
+            GameState::PlayerWins(context) => {
+                assert_eq!(context.player_score(), Score(21));
+                Ok(())
+            }
+            _ => panic!("game state transitioned to wrong state"),
+        }
+    }
+
+    #[test]
     fn player_stands_with_twenty_and_dealer_has_seventeen_player_wins() -> Result<(), Box<dyn Error>>
     {
         let cards = cards(vector!(Rank::Ten, Rank::Ten, Rank::Ten, Rank::Seven));
@@ -450,5 +475,32 @@ mod game_state_machine {
             }
             _ => panic!("game state transitioned to wrong state"),
         }
+    }
+
+    #[test]
+    fn dealer_plays_their_hand_if_player_gets_blackjack_on_hit() -> Result<(), Box<dyn Error>> {
+        let cards = cards(vector!(
+            Rank::Ten,
+            Rank::Ten,
+            Rank::Ten,
+            Rank::Two,
+            Rank::Ace,
+            Rank::Nine
+        ));
+
+        let context = Context::new_with_cards(cards);
+        let game = deal(&GameState::Ready(context))?;
+
+        let player_hits = hit(&game)?;
+
+        match player_hits {
+            GameState::Draw(context) => {
+                assert_eq!(context.dealer_score(), Score(21));
+                assert_eq!(context.player_score(), Score(21));
+                Ok(())
+            }
+            _ => panic!("game state transitioned to wrong state"),
+        }
+ 
     }
 }
