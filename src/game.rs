@@ -24,7 +24,7 @@ impl GameState {
 struct Context {
     deck: Deck,
     player_hand: Hand,
-    computer_hand: DealerHand,
+    dealer_hand: DealerHand,
 }
 
 impl Context {
@@ -32,7 +32,7 @@ impl Context {
         Context {
             deck: Deck::new(),
             player_hand: Hand::new(),
-            computer_hand: DealerHand::new(),
+            dealer_hand: DealerHand::new(),
         }
     }
 
@@ -40,7 +40,7 @@ impl Context {
         Context {
             deck,
             player_hand: Hand::new(),
-            computer_hand: DealerHand::new(),
+            dealer_hand: DealerHand::new(),
         }
     }
 
@@ -50,11 +50,11 @@ impl Context {
         let (new_deck, third_card) = new_deck.deal()?;
         let (new_deck, fourth_card) = new_deck.deal()?;
         let player_hand = Hand::new().add(first_card).add(second_card);
-        let computer_hand = DealerHand::new().add(third_card).add(fourth_card);
+        let dealer_hand = DealerHand::new().add(third_card).add(fourth_card);
 
         Ok(Context {
             player_hand,
-            computer_hand,
+            dealer_hand,
             deck: new_deck,
         })
     }
@@ -65,17 +65,17 @@ impl Context {
 
         Ok(Context {
             player_hand,
-            computer_hand: self.computer_hand.clone(),
+            dealer_hand: self.dealer_hand.clone(),
             deck,
         })
     }
 
-    fn play_computer_hand(&self) -> Result<Context, Box<dyn std::error::Error>> {
+    fn play_dealer_hand(&self) -> Result<Context, Box<dyn std::error::Error>> {
         let mut new_context = self.clone();
         while new_context.dealer_score() < Score(17) {
             let (deck, card) = new_context.deck.deal()?;
             new_context.deck = deck;
-            new_context.computer_hand = new_context.computer_hand.add(card);
+            new_context.dealer_hand = new_context.dealer_hand.add(card);
         }
         Ok(new_context)
     }
@@ -97,7 +97,7 @@ impl Context {
     }
 
     fn dealer_score(&self) -> Score {
-        self.computer_hand.score()
+        self.dealer_hand.score()
     }
 
     fn player_busts(&self) -> bool {
@@ -160,7 +160,7 @@ fn hit(state: &GameState) -> Result<GameState, Box<dyn std::error::Error>> {
 fn stand(state: &GameState) -> Result<GameState, Box<dyn std::error::Error>> {
     match state {
         GameState::WaitingForPlayer(context) => {
-            let new_context = context.play_computer_hand()?;
+            let new_context = context.play_dealer_hand()?;
             Ok(match new_context {
                 _ if new_context.player_wins() => GameState::PlayerWins(new_context),
                 _ if new_context.dealer_wins() => GameState::DealerWins(new_context),
@@ -213,7 +213,7 @@ mod game_state_machine {
     }
 
     #[test]
-    fn deal_gives_the_player_and_computer_hands() -> Result<(), Box<dyn Error>> {
+    fn deal_gives_the_player_and_dealer_hands() -> Result<(), Box<dyn Error>> {
         let cards = minimal_cards();
         let context = Context::new(Deck::new_with_cards(cards.clone()));
         let game_state = GameState::Ready(context);
@@ -223,7 +223,7 @@ mod game_state_machine {
             assert_eq!(Hand::new().add(cards[0]).add(cards[1]), context.player_hand);
             assert_eq!(
                 DealerHand::new().add(cards[2]).add(cards[3]),
-                context.computer_hand
+                context.dealer_hand
             );
             Ok(())
         } else {
