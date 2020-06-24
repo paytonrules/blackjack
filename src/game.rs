@@ -1,8 +1,8 @@
-use crate::deck::{Deck, Card};
+use crate::deck::{Card, Deck};
 use crate::hand::{DealerHand, Hand, Score};
+use im::Vector;
 use std::error::Error;
 use std::fmt;
-use im::Vector;
 
 #[derive(Debug, PartialEq)]
 enum GameState {
@@ -49,7 +49,7 @@ impl Context {
         Context {
             deck: Deck::new_with_cards(cards),
             player_hand: Hand::new(),
-            dealer_hand: DealerHand::new()
+            dealer_hand: DealerHand::new(),
         }
     }
 
@@ -58,8 +58,8 @@ impl Context {
         let (new_deck, second_card) = new_deck.deal()?;
         let (new_deck, third_card) = new_deck.deal()?;
         let (new_deck, fourth_card) = new_deck.deal()?;
-        let player_hand = Hand::new().add(first_card).add(second_card);
-        let dealer_hand = DealerHand::new().add(third_card).add(fourth_card);
+        let player_hand = Hand::new().add(first_card).add(third_card);
+        let dealer_hand = DealerHand::new().add(second_card).add(fourth_card);
 
         Ok(Context {
             player_hand,
@@ -159,7 +159,9 @@ fn hit(state: &GameState) -> Result<GameState, Box<dyn Error>> {
             let new_context = context.deal_player_card()?;
 
             Ok(match new_context {
-                _ if new_context.player_blackjack() => stand(&GameState::WaitingForPlayer(new_context))?,
+                _ if new_context.player_blackjack() => {
+                    stand(&GameState::WaitingForPlayer(new_context))?
+                }
                 _ if new_context.player_busts() => GameState::DealerWins(new_context),
                 _ => GameState::WaitingForPlayer(new_context),
             })
@@ -187,7 +189,7 @@ fn stand(state: &GameState) -> Result<GameState, Box<dyn Error>> {
 mod game_state_machine {
     use super::*;
     use crate::deck::{Card, Rank, Suit};
-    use im::{vector};
+    use im::vector;
 
     fn cards(ranks: Vector<Rank>) -> Vector<Card> {
         ranks
@@ -201,6 +203,25 @@ mod game_state_machine {
 
     fn minimal_cards() -> Vector<Card> {
         cards(vector!(Rank::Nine, Rank::Ace, Rank::Nine, Rank::Ace))
+    }
+
+    #[test]
+    fn context_deal_intial_hand_deals_in_the_right_order() -> Result<(), Box<dyn Error>> {
+        let cards = cards(vector!(Rank::Ace, Rank::Two, Rank::Three, Rank::Four));
+        let context = Context::new_with_cards(cards.clone());
+
+        let new_context = context.deal_initial_hands()?;
+
+        assert_eq!(
+            new_context.player_hand,
+            Hand::new().add(cards[0]).add(cards[2])
+        );
+        assert_eq!(
+            new_context.dealer_hand,
+            DealerHand::new().add(cards[1]).add(cards[3])
+        );
+        assert_eq!(*new_context.dealer_hand.hidden_card().unwrap(), cards[1]);
+        Ok(())
     }
 
     #[test]
@@ -231,9 +252,9 @@ mod game_state_machine {
 
         if let GameState::WaitingForPlayer(context) = deal(&game_state)? {
             assert_eq!(Deck::new(), context.deck);
-            assert_eq!(Hand::new().add(cards[0]).add(cards[1]), context.player_hand);
+            assert_eq!(Hand::new().add(cards[0]).add(cards[2]), context.player_hand);
             assert_eq!(
-                DealerHand::new().add(cards[2]).add(cards[3]),
+                DealerHand::new().add(cards[1]).add(cards[3]),
                 context.dealer_hand
             );
             Ok(())
@@ -244,7 +265,7 @@ mod game_state_machine {
 
     #[test]
     fn deal_goes_to_dealer_won_when_dealer_has_blackjack() -> Result<(), Box<dyn Error>> {
-        let dealer_blackjack_hand = cards(vector!(Rank::Two, Rank::Two, Rank::Ace, Rank::Ten));
+        let dealer_blackjack_hand = cards(vector!(Rank::Two, Rank::Ace, Rank::Two, Rank::Ten));
         let context = Context::new_with_cards(dealer_blackjack_hand);
         let game_state = GameState::Ready(context);
 
@@ -281,7 +302,7 @@ mod game_state_machine {
 
     #[test]
     fn dealer_has_blackjack_and_player_has_blackjack_leads_to_draw() -> Result<(), Box<dyn Error>> {
-        let double_blackjack = cards(vector!(Rank::Ace, Rank::Ten, Rank::Ace, Rank::Ten));
+        let double_blackjack = cards(vector!(Rank::Ace, Rank::Ace, Rank::Ten, Rank::Ten));
         let context = Context::new_with_cards(double_blackjack);
 
         let new_state = deal(&GameState::Ready(context))?;
@@ -294,7 +315,7 @@ mod game_state_machine {
 
     #[test]
     fn player_wins_with_blackjack() -> Result<(), Box<dyn Error>> {
-        let player_blackjack = cards(vector!(Rank::Ace, Rank::Ten, Rank::Ace, Rank::Ace));
+        let player_blackjack = cards(vector!(Rank::Ace, Rank::Ace, Rank::Ten, Rank::Ace));
         let context = Context::new_with_cards(player_blackjack);
 
         let new_state = deal(&GameState::Ready(context))?;
@@ -310,7 +331,7 @@ mod game_state_machine {
         let cards = cards(vector!(
             Rank::Ace,
             Rank::Two,
-            Rank::Ten,
+            Rank::Four,
             Rank::Ten,
             Rank::Four
         ));
@@ -321,7 +342,7 @@ mod game_state_machine {
 
         match player_hits {
             GameState::WaitingForPlayer(context) => {
-                assert_eq!(context.player_score(), Score(17));
+                assert_eq!(context.player_score(), Score(19));
                 Ok(())
             }
             _ => panic!("game state should not have transitioned!"),
@@ -333,9 +354,9 @@ mod game_state_machine {
         let cards = cards(vector!(
             Rank::Ten,
             Rank::Ten,
-            Rank::Ace,
-            Rank::Ace,
-            Rank::Four
+            Rank::Six,
+            Rank::Ten,
+            Rank::Eight
         ));
         let context = Context::new_with_cards(cards);
         let game = deal(&GameState::Ready(context))?;
@@ -396,7 +417,7 @@ mod game_state_machine {
     #[test]
     fn player_stands_with_seventeen_and_dealer_has_twenty_dealer_wins() -> Result<(), Box<dyn Error>>
     {
-        let cards = cards(vector!(Rank::Ten, Rank::Seven, Rank::Ten, Rank::Ten));
+        let cards = cards(vector!(Rank::Ten, Rank::Ten, Rank::Seven, Rank::Ten));
         let context = Context::new_with_cards(cards);
         let game = deal(&GameState::Ready(context))?;
 
@@ -501,6 +522,5 @@ mod game_state_machine {
             }
             _ => panic!("game state transitioned to wrong state"),
         }
- 
     }
 }

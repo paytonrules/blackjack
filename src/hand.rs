@@ -62,7 +62,7 @@ impl DealerHand {
         self.hand.score()
     }
 
-    fn hidden_card(&self) -> Option<&Card> {
+    pub fn hidden_card(&self) -> Option<&Card> {
         self.hand.0.front() 
     }
 }
