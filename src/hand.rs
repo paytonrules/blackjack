@@ -1,7 +1,7 @@
 use crate::deck::{Card, Rank};
 use im::{vector, Vector};
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, PartialOrd)]
 pub struct Score(pub u8);
 
 #[derive(Clone, Debug, PartialEq)]
