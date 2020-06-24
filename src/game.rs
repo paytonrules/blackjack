@@ -1,7 +1,8 @@
-use crate::deck::Deck;
+use crate::deck::{Deck, Card};
 use crate::hand::{DealerHand, Hand, Score};
 use std::error::Error;
 use std::fmt;
+use im::Vector;
 
 #[derive(Debug, PartialEq)]
 enum GameState {
@@ -41,6 +42,14 @@ impl Context {
             deck,
             player_hand: Hand::new(),
             dealer_hand: DealerHand::new(),
+        }
+    }
+
+    fn new_with_cards(cards: Vector<Card>) -> Self {
+        Context {
+            deck: Deck::new_with_cards(cards),
+            player_hand: Hand::new(),
+            dealer_hand: DealerHand::new()
         }
     }
 
@@ -176,7 +185,7 @@ fn stand(state: &GameState) -> Result<GameState, Box<dyn std::error::Error>> {
 mod game_state_machine {
     use super::*;
     use crate::deck::{Card, Rank, Suit};
-    use im::{vector, Vector};
+    use im::{vector};
 
     fn cards(ranks: Vector<Rank>) -> Vector<Card> {
         ranks
@@ -194,7 +203,7 @@ mod game_state_machine {
 
     #[test]
     fn deal_transitions_from_ready_to_waiting_for_player() -> Result<(), Box<dyn Error>> {
-        let game_state = GameState::Ready(Context::new(Deck::new_with_cards(minimal_cards())));
+        let game_state = GameState::Ready(Context::new_with_cards(minimal_cards()));
 
         let new_game_state = deal(&game_state)?;
         match new_game_state {
@@ -215,7 +224,7 @@ mod game_state_machine {
     #[test]
     fn deal_gives_the_player_and_dealer_hands() -> Result<(), Box<dyn Error>> {
         let cards = minimal_cards();
-        let context = Context::new(Deck::new_with_cards(cards.clone()));
+        let context = Context::new_with_cards(cards.clone());
         let game_state = GameState::Ready(context);
 
         if let GameState::WaitingForPlayer(context) = deal(&game_state)? {
@@ -234,7 +243,7 @@ mod game_state_machine {
     #[test]
     fn deal_goes_to_dealer_won_when_dealer_has_blackjack() -> Result<(), Box<dyn Error>> {
         let dealer_blackjack_hand = cards(vector!(Rank::Two, Rank::Two, Rank::Ace, Rank::Ten));
-        let context = Context::new(Deck::new_with_cards(dealer_blackjack_hand));
+        let context = Context::new_with_cards(dealer_blackjack_hand);
         let game_state = GameState::Ready(context);
 
         let new_state = deal(&game_state)?;
@@ -253,7 +262,7 @@ mod game_state_machine {
             Rank::Ten,
             Rank::Nine
         ));
-        let context = Context::new(Deck::new_with_cards(typical_hand));
+        let context = Context::new_with_cards(typical_hand);
 
         let game_state = GameState::Ready(context);
 
@@ -271,7 +280,7 @@ mod game_state_machine {
     #[test]
     fn dealer_has_blackjack_and_player_has_blackjack_leads_to_draw() -> Result<(), Box<dyn Error>> {
         let double_blackjack = cards(vector!(Rank::Ace, Rank::Ten, Rank::Ace, Rank::Ten));
-        let context = Context::new(Deck::new_with_cards(double_blackjack));
+        let context = Context::new_with_cards(double_blackjack);
 
         let new_state = deal(&GameState::Ready(context))?;
 
@@ -284,7 +293,7 @@ mod game_state_machine {
     #[test]
     fn player_wins_with_blackjack() -> Result<(), Box<dyn Error>> {
         let player_blackjack = cards(vector!(Rank::Ace, Rank::Ten, Rank::Ace, Rank::Ace));
-        let context = Context::new(Deck::new_with_cards(player_blackjack));
+        let context = Context::new_with_cards(player_blackjack);
 
         let new_state = deal(&GameState::Ready(context))?;
 
@@ -303,7 +312,7 @@ mod game_state_machine {
             Rank::Ten,
             Rank::Four
         ));
-        let context = Context::new(Deck::new_with_cards(cards));
+        let context = Context::new_with_cards(cards);
         let game = deal(&GameState::Ready(context))?;
 
         let player_hits = hit(&game)?;
@@ -326,7 +335,7 @@ mod game_state_machine {
             Rank::Ace,
             Rank::Four
         ));
-        let context = Context::new(Deck::new_with_cards(cards));
+        let context = Context::new_with_cards(cards);
         let game = deal(&GameState::Ready(context))?;
 
         let player_hits = hit(&game)?;
@@ -344,7 +353,7 @@ mod game_state_machine {
     fn player_stands_with_twenty_and_dealer_has_seventeen_player_wins() -> Result<(), Box<dyn Error>>
     {
         let cards = cards(vector!(Rank::Ten, Rank::Ten, Rank::Ten, Rank::Seven));
-        let context = Context::new(Deck::new_with_cards(cards));
+        let context = Context::new_with_cards(cards);
         let game = deal(&GameState::Ready(context))?;
 
         let player_stands = stand(&game)?;
@@ -363,7 +372,7 @@ mod game_state_machine {
     fn player_stands_with_seventeen_and_dealer_has_twenty_dealer_wins() -> Result<(), Box<dyn Error>>
     {
         let cards = cards(vector!(Rank::Ten, Rank::Seven, Rank::Ten, Rank::Ten));
-        let context = Context::new(Deck::new_with_cards(cards));
+        let context = Context::new_with_cards(cards);
         let game = deal(&GameState::Ready(context))?;
 
         let player_stands = stand(&game)?;
@@ -381,7 +390,7 @@ mod game_state_machine {
     #[test]
     fn player_stands_with_twenty_and_dealer_has_twenty_draw() -> Result<(), Box<dyn Error>> {
         let cards = cards(vector!(Rank::Ten, Rank::Ten, Rank::Ten, Rank::Ten));
-        let context = Context::new(Deck::new_with_cards(cards));
+        let context = Context::new_with_cards(cards);
         let game = deal(&GameState::Ready(context))?;
 
         let player_stands = stand(&game)?;
@@ -405,7 +414,7 @@ mod game_state_machine {
             Rank::Six,
             Rank::Ace
         ));
-        let context = Context::new(Deck::new_with_cards(cards));
+        let context = Context::new_with_cards(cards);
         let game = deal(&GameState::Ready(context))?;
 
         let player_stands = stand(&game)?;
@@ -429,7 +438,7 @@ mod game_state_machine {
             Rank::Ace,
             Rank::Four
         ));
-        let context = Context::new(Deck::new_with_cards(cards));
+        let context = Context::new_with_cards(cards);
         let game = deal(&GameState::Ready(context))?;
 
         let player_stands = stand(&game)?;
