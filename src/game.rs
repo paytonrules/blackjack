@@ -29,14 +29,6 @@ struct Context {
 }
 
 impl Context {
-    fn empty() -> Self {
-        Context {
-            deck: Deck::new(),
-            player_hand: Hand::new(),
-            dealer_hand: DealerHand::new(),
-        }
-    }
-
     fn new(deck: Deck) -> Self {
         Context {
             deck,
@@ -45,12 +37,16 @@ impl Context {
         }
     }
 
+    fn empty() -> Self {
+        Context::new(Deck::new())
+    }
+
     fn new_with_cards(cards: Vector<Card>) -> Self {
-        Context {
-            deck: Deck::new_with_cards(cards),
-            player_hand: Hand::new(),
-            dealer_hand: DealerHand::new(),
-        }
+        Context::new(Deck::new_with_cards(cards))
+    }
+
+    fn new_hand() -> Self {
+        Context::new(Deck::standard_deck().shuffle())
     }
 
     fn deal_initial_hands(&self) -> Result<Context, Box<dyn Error>> {
@@ -148,7 +144,11 @@ fn deal(state: &GameState) -> Result<GameState, Box<dyn Error>> {
                 _ if new_context.player_blackjack() => GameState::PlayerWins(new_context),
                 _ => GameState::WaitingForPlayer(new_context),
             })
-        }
+        },
+        GameState::DealerWins(_) | GameState::PlayerWins(_) | GameState::Draw(_) => {
+            let start = GameState::Ready(Context::new_hand());
+            deal(&start)
+        },
         _ => Err(Box::new(InvalidStateError {})),
     }
 }
@@ -188,8 +188,8 @@ fn stand(state: &GameState) -> Result<GameState, Box<dyn Error>> {
 #[cfg(test)]
 mod game_state_machine {
     use super::*;
-    use crate::deck::{Card, Rank, Suit};
-    use im::vector;
+    use crate::deck::{Rank, Suit};
+    use im::{vector, HashSet};
 
     fn cards(ranks: Vector<Rank>) -> Vector<Card> {
         ranks
@@ -222,6 +222,21 @@ mod game_state_machine {
         );
         assert_eq!(*new_context.dealer_hand.hidden_card().unwrap(), cards[1]);
         Ok(())
+    }
+
+    #[test]
+    fn context_new_hand_creates_new_context_with_new_shuffled_deck() {
+        let context = Context::new_hand();
+
+        let full_deck = Deck::standard_deck();
+        assert_ne!(context.deck.cards, full_deck.cards);
+
+        let shuffled_deck_set = full_deck.cards.into_iter().collect::<HashSet<Card>>();
+        let new_deck_set = context.deck.cards.into_iter().collect::<HashSet<Card>>();
+        assert_eq!(new_deck_set, shuffled_deck_set);
+
+        assert_eq!(context.player_hand, Hand::new());
+        assert_eq!(context.dealer_hand, DealerHand::new());
     }
 
     #[test]
