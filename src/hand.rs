@@ -18,6 +18,10 @@ impl Hand {
         new_hand
     }
 
+    pub fn cards(&self) -> Vector<Card> {
+        self.0.clone()
+    }
+
     pub fn score(&self) -> Score {
         let hard_value = self.0.iter().map(|card| card.rank.to_value().0).sum();
 
@@ -44,12 +48,12 @@ impl Hand {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct DealerHand {
-    hand: Hand
+    hand: Hand,
 }
 
 impl DealerHand {
     pub fn new() -> Self {
-        DealerHand {hand: Hand::new()}
+        DealerHand { hand: Hand::new() }
     }
 
     pub fn add(&self, card: Card) -> Self {
@@ -62,11 +66,14 @@ impl DealerHand {
         self.hand.score()
     }
 
-    pub fn hidden_card(&self) -> Option<&Card> {
-        self.hand.0.front() 
+    pub fn hole_card(&self) -> Option<&Card> {
+        self.hand.0.front()
+    }
+
+    pub fn upcard(&self) -> Option<&Card> {
+        self.hand.0.get(1)
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -170,23 +177,31 @@ mod tests {
     }
 
     #[test]
-    fn a_dealer_hands_first_card_is_invisible() {
+    fn a_dealer_hand_begins_with_a_hole_card_and_an_upcard() {
         let dealer_hand = DealerHand::new()
             .add(Card {
-                rank: Rank::Ten,
+                rank: Rank::Nine,
                 suit: Suit::Heart,
             })
             .add(Card {
-                rank: Rank::Ten,
+                rank: Rank::Three,
                 suit: Suit::Heart,
             });
 
         assert_eq!(
-            dealer_hand.hidden_card(),
+            dealer_hand.hole_card(),
             Some(&Card {
-                rank: Rank::Ten,
+                rank: Rank::Nine,
                 suit: Suit::Heart,
-            }));
+            })
+        );
+        assert_eq!(
+            dealer_hand.upcard(),
+            Some(&Card {
+                rank: Rank::Three,
+                suit: Suit::Heart,
+            })
+        );
     }
 
     #[test]
@@ -202,5 +217,20 @@ mod tests {
             });
 
         assert_eq!(dealer_hand.score(), Score(20));
+    }
+
+    #[test]
+    fn access_cards_through_cards_function() {
+        let card_one = Card {
+            rank: Rank::Ace,
+            suit: Suit::Heart,
+        };
+        let card_two = Card {
+            rank: Rank::Two,
+            suit: Suit::Spade,
+        };
+        let hand = Hand::new().add(card_one).add(card_two);
+
+        assert_eq!(hand.cards(), vector!(card_one, card_two));
     }
 }

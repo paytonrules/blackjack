@@ -218,7 +218,7 @@ mod game_state_machine {
             new_context.dealer_hand,
             DealerHand::new().add(cards[1]).add(cards[3])
         );
-        assert_eq!(*new_context.dealer_hand.hidden_card().unwrap(), cards[1]);
+        assert_eq!(*new_context.dealer_hand.hole_card().unwrap(), cards[1]);
         Ok(())
     }
 
