@@ -5,7 +5,7 @@ use std::error::Error;
 use std::fmt;
 
 #[derive(Debug, PartialEq)]
-enum GameState {
+pub enum GameState {
     Ready(Context),
     WaitingForPlayer(Context),
     DealerWins(Context),
@@ -14,18 +14,16 @@ enum GameState {
 }
 
 impl GameState {
-    fn new() -> Self {
-        let shuffled_deck = Deck::standard_deck().shuffle();
-        let context = Context::new(shuffled_deck);
-        GameState::Ready(context)
+    pub fn new() -> Self {
+        GameState::Ready(Context::new_hand())
     }
 }
 
 #[derive(Debug, PartialEq, Clone)]
-struct Context {
+pub struct Context {
     deck: Deck,
-    player_hand: Hand,
-    dealer_hand: DealerHand,
+    pub player_hand: Hand,
+    pub dealer_hand: DealerHand,
 }
 
 impl Context {
@@ -133,7 +131,7 @@ impl fmt::Display for InvalidStateError {
     }
 }
 
-fn deal(state: &GameState) -> Result<GameState, Box<dyn Error>> {
+pub fn deal(state: &GameState) -> Result<GameState, Box<dyn Error>> {
     match state {
         GameState::Ready(context) => {
             let new_context = context.deal_initial_hands()?;
@@ -153,7 +151,7 @@ fn deal(state: &GameState) -> Result<GameState, Box<dyn Error>> {
     }
 }
 
-fn hit(state: &GameState) -> Result<GameState, Box<dyn Error>> {
+pub fn hit(state: &GameState) -> Result<GameState, Box<dyn Error>> {
     match state {
         GameState::WaitingForPlayer(context) => {
             let new_context = context.deal_player_card()?;
@@ -170,7 +168,7 @@ fn hit(state: &GameState) -> Result<GameState, Box<dyn Error>> {
     }
 }
 
-fn stand(state: &GameState) -> Result<GameState, Box<dyn Error>> {
+pub fn stand(state: &GameState) -> Result<GameState, Box<dyn Error>> {
     match state {
         GameState::WaitingForPlayer(context) => {
             let new_context = context.play_dealer_hand()?;
