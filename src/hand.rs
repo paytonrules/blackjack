@@ -73,6 +73,10 @@ impl DealerHand {
     pub fn upcard(&self) -> Option<&Card> {
         self.hand.0.get(1)
     }
+
+    pub fn cards(&self) -> Vector<Card> {
+        self.hand.cards()
+    }
 }
 
 #[cfg(test)]
@@ -230,6 +234,21 @@ mod tests {
             suit: Suit::Spade,
         };
         let hand = Hand::new().add(card_one).add(card_two);
+
+        assert_eq!(hand.cards(), vector!(card_one, card_two));
+    }
+
+    #[test]
+    fn access_cards_for_dealer_through_cards_function() {
+        let card_one = Card {
+            rank: Rank::Ace,
+            suit: Suit::Heart,
+        };
+        let card_two = Card {
+            rank: Rank::Two,
+            suit: Suit::Spade,
+        };
+        let hand = DealerHand::new().add(card_one).add(card_two);
 
         assert_eq!(hand.cards(), vector!(card_one, card_two));
     }
