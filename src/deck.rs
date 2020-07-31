@@ -1,11 +1,10 @@
 use im::{vector, Vector};
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use std::error::Error;
 use std::fmt;
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter};
-use rand::seq::SliceRandom;
-use rand::thread_rng;
-
 
 #[derive(PartialEq, Debug)]
 pub struct Value(pub u8);
@@ -75,10 +74,6 @@ pub struct Deck {
 }
 
 impl Deck {
-    pub fn new() -> Self {
-        Deck { cards: vector!() }
-    }
-
     pub fn new_with_cards(cards: Vector<Card>) -> Self {
         Deck { cards }
     }
@@ -190,7 +185,10 @@ mod tests {
     fn can_create_a_standard_deck() {
         let deck = Deck::standard_deck();
 
-        assert_eq!(deck.cards.len(), Rank::iter().count() * Suit::iter().count());
+        assert_eq!(
+            deck.cards.len(),
+            Rank::iter().count() * Suit::iter().count()
+        );
         assert_ne!(deck.cards.len(), 0);
         for rank in Rank::iter() {
             let suits: Vec<Suit> = deck

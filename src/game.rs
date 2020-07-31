@@ -1,6 +1,5 @@
-use crate::deck::{Card, Deck};
+use crate::deck::Deck;
 use crate::hand::{DealerHand, Hand, Score};
-use im::Vector;
 use std::error::Error;
 use std::fmt;
 
@@ -33,14 +32,6 @@ impl Context {
             player_hand: Hand::new(),
             dealer_hand: DealerHand::new(),
         }
-    }
-
-    fn empty() -> Self {
-        Context::new(Deck::new())
-    }
-
-    fn new_with_cards(cards: Vector<Card>) -> Self {
-        Context::new(Deck::new_with_cards(cards))
     }
 
     fn new_hand() -> Self {
@@ -142,11 +133,11 @@ pub fn deal(state: &GameState) -> Result<GameState, Box<dyn Error>> {
                 _ if new_context.player_blackjack() => GameState::PlayerWins(new_context),
                 _ => GameState::WaitingForPlayer(new_context),
             })
-        },
+        }
         GameState::DealerWins(_) | GameState::PlayerWins(_) | GameState::Draw(_) => {
             let start = GameState::Ready(Context::new_hand());
             deal(&start)
-        },
+        }
         _ => Err(Box::new(InvalidStateError {})),
     }
 }
@@ -186,8 +177,24 @@ pub fn stand(state: &GameState) -> Result<GameState, Box<dyn Error>> {
 #[cfg(test)]
 mod game_state_machine {
     use super::*;
-    use crate::deck::{Rank, Suit};
-    use im::{vector, HashSet};
+    use crate::deck::{Card, Rank, Suit};
+    use im::{vector, HashSet, Vector};
+
+    impl Deck {
+        pub fn new() -> Self {
+            Deck { cards: vector!() }
+        }
+    }
+
+    impl Context {
+        fn empty() -> Self {
+            Context::new(Deck::new())
+        }
+
+        fn new_with_cards(cards: Vector<Card>) -> Self {
+            Context::new(Deck::new_with_cards(cards))
+        }
+    }
 
     fn cards(ranks: Vector<Rank>) -> Vector<Card> {
         ranks
