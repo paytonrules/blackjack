@@ -18,6 +18,8 @@ impl GameState {
     }
 }
 
+const BLACKJACK: Score = Score(21);
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct Context {
     deck: Deck,
@@ -79,11 +81,11 @@ impl Context {
     }
 
     fn player_blackjack(&self) -> bool {
-        self.player_score() == Score(21)
+        self.player_score() == BLACKJACK
     }
 
     fn dealer_blackjack(&self) -> bool {
-        self.dealer_score() == Score(21)
+        self.dealer_score() == BLACKJACK
     }
 
     fn player_score(&self) -> Score {
@@ -95,15 +97,19 @@ impl Context {
     }
 
     fn player_busts(&self) -> bool {
-        self.player_score() > Score(21)
+        self.player_score() > BLACKJACK
+    }
+
+    fn dealer_busts(&self) -> bool {
+        self.dealer_score() > BLACKJACK
     }
 
     fn player_wins(&self) -> bool {
-        self.player_score() > self.dealer_score()
+        self.player_score() > self.dealer_score() || self.dealer_busts()
     }
 
     fn dealer_wins(&self) -> bool {
-        self.dealer_score() > self.player_score()
+        self.dealer_score() > self.player_score() && !self.dealer_busts()
     }
 
     fn draw(&self) -> bool {
@@ -164,8 +170,8 @@ pub fn stand(state: &GameState) -> Result<GameState, Box<dyn Error>> {
         GameState::WaitingForPlayer(context) => {
             let new_context = context.play_dealer_hand()?;
             Ok(match new_context {
-                _ if new_context.player_wins() => GameState::PlayerWins(new_context),
                 _ if new_context.dealer_wins() => GameState::DealerWins(new_context),
+                _ if new_context.player_wins() => GameState::PlayerWins(new_context),
                 _ if new_context.draw() => GameState::Draw(new_context),
                 _ => GameState::WaitingForPlayer(new_context),
             })
@@ -408,7 +414,7 @@ mod game_state_machine {
 
         match player_hits {
             GameState::PlayerWins(context) => {
-                assert_eq!(context.player_score(), Score(21));
+                assert_eq!(context.player_score(), BLACKJACK);
                 Ok(())
             }
             _ => panic!("game state transitioned to wrong state"),
@@ -536,11 +542,36 @@ mod game_state_machine {
 
         match player_hits {
             GameState::Draw(context) => {
-                assert_eq!(context.dealer_score(), Score(21));
-                assert_eq!(context.player_score(), Score(21));
+                assert_eq!(context.dealer_score(), BLACKJACK);
+                assert_eq!(context.player_score(), BLACKJACK);
                 Ok(())
             }
             _ => panic!("game state transitioned to wrong state"),
+        }
+    }
+
+    #[test]
+    fn dealer_loses_if_they_bust() -> Result<(), Box<dyn Error>> {
+        let cards = cards(vector!(
+            Rank::Ten,
+            Rank::Ten,
+            Rank::Ten,
+            Rank::Six,
+            Rank::Six
+        ));
+        let context = Context::new_with_cards(cards);
+        let game = deal(&GameState::Ready(context))?;
+
+        let dealer_busts = stand(&game)?;
+
+        match dealer_busts {
+            GameState::PlayerWins(context) => {
+                assert_eq!(context.dealer_score(), Score(22));
+                assert_eq!(context.player_score(), Score(20));
+                Ok(())
+            }
+            GameState::DealerWins(_) => panic!("Dealer just won with a bust!"),
+            _ => panic!("game transitioned to the wrong state"),
         }
     }
 }
