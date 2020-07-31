@@ -1,0 +1,127 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://addons/atlas_importer3/importer_gui.gd" type="Script" id=1]
+
+[node name="Atlas Importer" type="MarginContainer"]
+margin_right = 310.0
+margin_bottom = 257.0
+script = ExtResource( 1 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Input" type="VBoxContainer" parent="."]
+margin_right = 310.0
+margin_bottom = 257.0
+custom_constants/separation = 10
+
+[node name="Type" type="HBoxContainer" parent="Input"]
+margin_right = 310.0
+margin_bottom = 20.0
+mouse_filter = 0
+
+[node name="Label" type="Label" parent="Input/Type"]
+margin_top = 3.0
+margin_right = 120.0
+margin_bottom = 17.0
+rect_min_size = Vector2( 120, 0 )
+text = "Atlas generator"
+valign = 1
+
+[node name="TypeButton" type="OptionButton" parent="Input/Type"]
+margin_left = 124.0
+margin_right = 310.0
+margin_bottom = 20.0
+size_flags_horizontal = 3
+toggle_mode = false
+text = "Attila"
+items = [ "Attila", null, false, 2, null, "TexturePacker - Generic XML", null, false, 0, null, "TexturePacker - JSON HASH", null, false, 1, null, "Kenney Spritesheet", null, false, 3, null, "GDX Texturepacker", null, false, 4, null ]
+selected = 0
+
+[node name="Source" type="HBoxContainer" parent="Input"]
+margin_top = 30.0
+margin_right = 310.0
+margin_bottom = 54.0
+mouse_filter = 0
+
+[node name="Label" type="Label" parent="Input/Source"]
+margin_top = 5.0
+margin_right = 120.0
+margin_bottom = 19.0
+rect_min_size = Vector2( 120, 0 )
+text = "Source meta file"
+valign = 1
+
+[node name="MetaFileField" type="LineEdit" parent="Input/Source"]
+margin_left = 124.0
+margin_right = 282.0
+margin_bottom = 24.0
+size_flags_horizontal = 3
+custom_constants/minimum_spaces = 2
+caret_blink = true
+
+[node name="Browse" type="Button" parent="Input/Source"]
+margin_left = 286.0
+margin_right = 310.0
+margin_bottom = 24.0
+text = "..."
+
+[node name="Target" type="HBoxContainer" parent="Input"]
+margin_top = 64.0
+margin_right = 310.0
+margin_bottom = 88.0
+mouse_filter = 0
+
+[node name="Label" type="Label" parent="Input/Target"]
+margin_top = 5.0
+margin_right = 120.0
+margin_bottom = 19.0
+rect_min_size = Vector2( 120, 0 )
+text = "Texture file"
+valign = 1
+
+[node name="TargetDirField" type="LineEdit" parent="Input/Target"]
+margin_left = 124.0
+margin_right = 282.0
+margin_bottom = 24.0
+size_flags_horizontal = 3
+caret_blink = true
+
+[node name="Browse" type="Button" parent="Input/Target"]
+margin_left = 286.0
+margin_right = 310.0
+margin_bottom = 24.0
+text = "..."
+
+[node name="Folder" type="HBoxContainer" parent="Input"]
+margin_top = 98.0
+margin_right = 310.0
+margin_bottom = 122.0
+mouse_filter = 0
+
+[node name="Label" type="Label" parent="Input/Folder"]
+margin_top = 5.0
+margin_right = 120.0
+margin_bottom = 19.0
+rect_min_size = Vector2( 120, 0 )
+text = "Save to Folder"
+valign = 1
+
+[node name="FolderField" type="LineEdit" parent="Input/Folder"]
+margin_left = 124.0
+margin_right = 282.0
+margin_bottom = 24.0
+size_flags_horizontal = 3
+caret_blink = true
+
+[node name="Browse" type="Button" parent="Input/Folder"]
+margin_left = 286.0
+margin_right = 310.0
+margin_bottom = 24.0
+text = "..."
+
+[node name="Button" type="Button" parent="Input"]
+margin_top = 132.0
+margin_right = 310.0
+margin_bottom = 152.0
+text = "Save Atlas"

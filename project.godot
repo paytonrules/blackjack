@@ -16,7 +16,12 @@ _global_script_class_icons={
 [application]
 
 config/name="Blackjack"
+run/main_scene="res://Blackjack.tscn"
 config/icon="res://icon.png"
+
+[editor_plugins]
+
+enabled=PoolStringArray( "atlas_importer3" )
 
 [rendering]
 
