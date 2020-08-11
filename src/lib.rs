@@ -25,7 +25,11 @@ fn rank_as_texture_abbreviation(rank: &Rank) -> String {
 }
 
 fn card_texture_from_card(card: &Card) -> String {
-    format!("cardDiamonds{}", rank_as_texture_abbreviation(&card.rank))
+    format!(
+        "card{:?}s{}",
+        card.suit,
+        rank_as_texture_abbreviation(&card.rank)
+    )
 }
 
 #[derive(NativeClass)]
@@ -147,5 +151,16 @@ mod godot_lib {
         let resource = card_texture_from_card(&card);
 
         assert_eq!("cardDiamondsJ", resource);
+    }
+
+    #[test]
+    fn jack_of_clubs_resource_string_from_card() {
+        let card = Card {
+            rank: Rank::Jack,
+            suit: Suit::Club,
+        };
+        let resource = card_texture_from_card(&card);
+
+        assert_eq!("cardClubsJ", resource);
     }
 }
