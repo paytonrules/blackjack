@@ -87,7 +87,6 @@ impl Blackjack {
                     let resource_loader = ResourceLoader::godot_singleton();
                     for card in context.player_hand.cards() {
                         let sprite = Sprite::new();
-
                         let sprite_name = format!(
                             "res://images/playingCards.{}.atlastex",
                             card_texture_from_card(&card),
@@ -106,23 +105,32 @@ impl Blackjack {
 
                 get_typed_node::<Node2D, _>("./DealerHand", owner, |dealer_hand| {
                     let resource_loader = ResourceLoader::godot_singleton();
-                    for card in context.dealer_hand.cards() {
-                        let sprite = Sprite::new();
 
-                        let sprite_name = format!(
-                            "res://images/playingCards.{}.atlastex",
-                            card_texture_from_card(&card),
-                        );
-                        let texture = resource_loader
-                            .load(sprite_name, "AtlasTexture", false)
-                            .and_then(|res| res.cast::<AtlasTexture>())
-                            .expect("Couldn't load atlasTexture texture");
+                    // Show dealer hole card first
+                    let sprite = Sprite::new();
+                    let sprite_name = "res://images/playingCardBacks.cardBack_blue1.atlastex";
 
-                        let child_count = dealer_hand.get_child_count() as f32;
-                        sprite.set_texture(texture);
-                        sprite.set_position(Vector2::new(child_count * 70.0, 0.0));
-                        dealer_hand.add_child(sprite, false);
-                    }
+                    let texture = resource_loader
+                        .load(sprite_name, "AtlasTexture", false)
+                        .and_then(|res| res.cast::<AtlasTexture>())
+                        .expect("Couldn't load atlasTexture texture");
+                    sprite.set_texture(texture);
+                    sprite.set_position(Vector2::new(0.0, 0.0));
+                    dealer_hand.add_child(sprite, false);
+
+                    let sprite = Sprite::new();
+                    let sprite_name = format!(
+                        "res://images/playingCards.{}.atlastex",
+                        card_texture_from_card(&context.dealer_hand.upcard().unwrap()),
+                    );
+                    let texture = resource_loader
+                        .load(sprite_name, "AtlasTexture", false)
+                        .and_then(|res| res.cast::<AtlasTexture>())
+                        .expect("Couldn't load atlasTexture texture");
+
+                    sprite.set_texture(texture);
+                    sprite.set_position(Vector2::new(70.0, 0.0));
+                    dealer_hand.add_child(sprite, false);
                 });
             }
 
