@@ -13,7 +13,7 @@
 
 * Console UI
 * Test Cleanup
-[x] Fix all "unuused" warnings, move functions that are only in tests to tests
+[x] Fix all "unused" warnings, move functions that are only in tests to tests
 * TODO Deal Two Hands on New Deal Button
 ** DONE Show the actual cards dealt
 *** DONE Construct the resource name from the card type
@@ -22,12 +22,12 @@
 *** DONE Create a "hand" scene and place both on the screen, dealer on top, player on bottom
 ** DONE Hide the hidden card
 ** TODO REFACTOR!
-*** TODO Extract functions for the duplicate code
-*** TODO Reconsider naming (yet again)
+*** DONE Extract functions for the duplicate code
+*** DONE Reconsider naming (yet again)
 *** TODO Test the code that calculates the position of the card
-*** HOLD Move godot code out of lib
 ** TODO Get Command-line game working
 *** TODO Create a workspace with godot separate from game lib
+*** TODO Move godot code out of lib
 ** HOLD Extract a utility library for Godot
 - I use a couple functions regularly and I think I want to make them a helper crate that I just always use. But they are probably not ready-for-prime-time yet.
 ** TODO Refactor game states to be ~mut self~ so they don't require cloning

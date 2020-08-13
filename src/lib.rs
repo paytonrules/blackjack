@@ -5,7 +5,6 @@ mod game;
 mod hand;
 use deck::{Card, Rank};
 use game::{deal, GameState};
-use std::error;
 
 pub fn get_typed_node<O, F>(name: &str, owner: &Node, mut f: F)
 where
@@ -44,9 +43,9 @@ fn rank_as_texture_abbreviation(rank: &Rank) -> String {
     }
 }
 
-fn card_texture_from_card(card: &Card) -> String {
+fn texture_path_from_card(card: &Card) -> String {
     format!(
-        "card{:?}s{}",
+        "res://images/playingCards.card{:?}s{}.atlastex",
         card.suit,
         rank_as_texture_abbreviation(&card.rank)
     )
@@ -99,11 +98,7 @@ impl Blackjack {
             GameState::WaitingForPlayer(context) => {
                 get_typed_node::<Node2D, _>("./PlayerHand", owner, |player_hand| {
                     for card in context.player_hand.cards() {
-                        let sprite_name = format!(
-                            "res://images/playingCards.{}.atlastex",
-                            card_texture_from_card(&card),
-                        );
-                        add_card_to_hand(&sprite_name, &player_hand);
+                        add_card_to_hand(&texture_path_from_card(&card), &player_hand);
                     }
                 });
 
@@ -113,11 +108,10 @@ impl Blackjack {
                         &dealer_hand,
                     );
 
-                    let sprite_name = format!(
-                        "res://images/playingCards.{}.atlastex",
-                        card_texture_from_card(&context.dealer_hand.upcard().unwrap()),
+                    add_card_to_hand(
+                        &texture_path_from_card(&context.dealer_hand.upcard().unwrap()),
+                        &dealer_hand,
                     );
-                    add_card_to_hand(&sprite_name, &dealer_hand);
                 });
             }
 
@@ -147,9 +141,8 @@ mod godot_lib {
             rank: Rank::Two,
             suit: Suit::Diamond,
         };
-        let resource = card_texture_from_card(&card);
-
-        assert_eq!("cardDiamonds2", resource);
+        let resource = texture_path_from_card(&card);
+        assert_eq!("res://images/playingCards.cardDiamonds2.atlastex", resource);
     }
 
     #[test]
@@ -158,9 +151,9 @@ mod godot_lib {
             rank: Rank::Three,
             suit: Suit::Diamond,
         };
-        let resource = card_texture_from_card(&card);
+        let resource = texture_path_from_card(&card);
 
-        assert_eq!("cardDiamonds3", resource);
+        assert_eq!("res://images/playingCards.cardDiamonds3.atlastex", resource);
     }
 
     #[test]
@@ -169,9 +162,9 @@ mod godot_lib {
             rank: Rank::Ace,
             suit: Suit::Diamond,
         };
-        let resource = card_texture_from_card(&card);
+        let resource = texture_path_from_card(&card);
 
-        assert_eq!("cardDiamondsA", resource);
+        assert_eq!("res://images/playingCards.cardDiamondsA.atlastex", resource);
     }
 
     #[test]
@@ -180,9 +173,9 @@ mod godot_lib {
             rank: Rank::King,
             suit: Suit::Diamond,
         };
-        let resource = card_texture_from_card(&card);
+        let resource = texture_path_from_card(&card);
 
-        assert_eq!("cardDiamondsK", resource);
+        assert_eq!("res://images/playingCards.cardDiamondsK.atlastex", resource);
     }
 
     #[test]
@@ -191,9 +184,9 @@ mod godot_lib {
             rank: Rank::Queen,
             suit: Suit::Diamond,
         };
-        let resource = card_texture_from_card(&card);
+        let resource = texture_path_from_card(&card);
 
-        assert_eq!("cardDiamondsQ", resource);
+        assert_eq!("res://images/playingCards.cardDiamondsQ.atlastex", resource);
     }
 
     #[test]
@@ -202,9 +195,9 @@ mod godot_lib {
             rank: Rank::Jack,
             suit: Suit::Diamond,
         };
-        let resource = card_texture_from_card(&card);
+        let resource = texture_path_from_card(&card);
 
-        assert_eq!("cardDiamondsJ", resource);
+        assert_eq!("res://images/playingCards.cardDiamondsJ.atlastex", resource);
     }
 
     #[test]
@@ -213,8 +206,8 @@ mod godot_lib {
             rank: Rank::Jack,
             suit: Suit::Club,
         };
-        let resource = card_texture_from_card(&card);
+        let resource = texture_path_from_card(&card);
 
-        assert_eq!("cardClubsJ", resource);
+        assert_eq!("res://images/playingCards.cardClubsJ.atlastex", resource);
     }
 }
