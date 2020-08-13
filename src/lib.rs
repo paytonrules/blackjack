@@ -34,23 +34,24 @@ fn card_texture_from_card(card: &Card) -> String {
 
 #[derive(NativeClass)]
 #[inherit(Node2D)]
-struct Gui {}
+struct Blackjack {
+    state: GameState,
+}
 
 #[methods]
-impl Gui {
+impl Blackjack {
     fn new(_owner: &Node2D) -> Self {
-        Gui {}
+        Blackjack {
+            state: GameState::new(),
+        }
     }
 
     #[export]
-    fn _on_new_game_pressed(&self, owner: &Node2D) {
-        let mut state = GameState::new();
+    fn _on_new_game_pressed(&mut self, owner: &Node2D) {
+        self.state = deal(&self.state).expect("Dealing has to work, basically");
 
-        state = deal(&state).expect("Dealing has to work, basically");
-
-        match state {
+        match &self.state {
             GameState::WaitingForPlayer(context) => {
-                godot_print!("I dealt some cards including {:?}", context.player_hand);
                 for card in context.player_hand.cards() {
                     let first_hand = Sprite::new();
 
@@ -77,7 +78,7 @@ impl Gui {
 }
 
 fn init(handle: InitHandle) {
-    handle.add_class::<Gui>();
+    handle.add_class::<Blackjack>();
 }
 
 godot_init!(init);

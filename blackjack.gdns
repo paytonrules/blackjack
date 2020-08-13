@@ -3,5 +3,5 @@
 [ext_resource path="res://blackjack_lib.tres" type="GDNativeLibrary" id=1]
 
 [resource]
-class_name = "Gui"
+class_name = "Blackjack"
 library = ExtResource( 1 )
