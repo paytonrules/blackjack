@@ -1,0 +1,30 @@
+* Tests To write:
+[x] Player Stands
+[x] Rename computer hand to dealer hand
+[x] Create a context with cards
+[x] Dealer plays hand (stands on all 17)
+[x] Player gets 21 on their hit (automatically plays to end)
+[x] Fix Dealing order - you flubbed it
+[x] Dealer gets natural blackjack - insta-lose player can't hit - better message / state?
+[x] Player busts - dealer doesn't deal cards
+[x] You lost a game with 21, how did that happen?
+[x] Transition from win/lose/draw to next hand (new, shuffled deck)
+[x] Better messages for player blackjack and dealer blackjack.
+
+* Console UI
+* Test Cleanup
+[x] Fix all "unuused" warnings, move functions that are only in tests to tests
+* TODO Deal Two Hands on New Deal Button
+** DONE Show the actual cards dealt
+*** DONE Construct the resource name from the card type
+*** DONE Deal the cards relative to each other (shifting to the 'right')
+** DONE Show player and dealer hands
+*** DONE Create a "hand" scene and place both on the screen, dealer on top, player on bottom
+** DONE Hide the hidden card
+** TODO REFACTOR!
+*** TODO Extract functions for the duplicate code
+*** TODO Reconsider naming (yet again)
+*** TODO Test the code that calculates the position of the card
+*** HOLD Move godot code out of lib
+** TODO Get Command-line game working
+*** TODO Create a workspace with godot separate from game lib
