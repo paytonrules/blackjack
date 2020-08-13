@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=2]
+[gd_scene load_steps=3 format=2]
 
 [ext_resource path="res://blackjack.gdns" type="Script" id=1]
+[ext_resource path="res://Hand.tscn" type="PackedScene" id=2]
 
 [node name="Blackjack" type="Node2D"]
 script = ExtResource( 1 )
@@ -14,7 +15,7 @@ __meta__ = {
 "_edit_use_anchors_": false
 }
 
-[node name="ToolButton" type="ToolButton" parent="."]
+[node name="NewGame" type="ToolButton" parent="."]
 margin_left = 44.2698
 margin_top = 22.1351
 margin_right = 126.27
@@ -23,4 +24,10 @@ text = "New Game"
 __meta__ = {
 "_edit_use_anchors_": false
 }
-[connection signal="pressed" from="ToolButton" to="." method="_on_new_game_pressed"]
+
+[node name="DealerHand" parent="." instance=ExtResource( 2 )]
+position = Vector2( 400, 120 )
+
+[node name="PlayerHand" parent="." instance=ExtResource( 2 )]
+position = Vector2( 400, 450 )
+[connection signal="pressed" from="NewGame" to="." method="_on_new_game_pressed"]
