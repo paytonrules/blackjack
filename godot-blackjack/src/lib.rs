@@ -1,10 +1,7 @@
+use blackjack::deck::{Card, Rank};
+use blackjack::game::{deal, GameState};
 use gdnative::api::AtlasTexture;
 use gdnative::prelude::*;
-mod deck;
-mod game;
-mod hand;
-use deck::{Card, Rank};
-use game::{deal, GameState};
 
 pub fn get_typed_node<O, F>(name: &str, owner: &Node, mut f: F)
 where
