@@ -20,7 +20,30 @@ margin_left = 44.2698
 margin_top = 22.1351
 margin_right = 126.27
 margin_bottom = 44.1351
+rect_pivot_offset = Vector2( 87.3944, 53.382 )
 text = "New Game"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Hit" type="ToolButton" parent="."]
+margin_left = 44.2698
+margin_top = 47.9592
+margin_right = 126.27
+margin_bottom = 69.9592
+rect_pivot_offset = Vector2( 87.3944, 53.382 )
+text = "Hit"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Stand" type="ToolButton" parent="."]
+margin_left = 44.2698
+margin_top = 73.7833
+margin_right = 126.27
+margin_bottom = 95.7833
+rect_pivot_offset = Vector2( 87.3944, 53.382 )
+text = "Stand"
 __meta__ = {
 "_edit_use_anchors_": false
 }
@@ -31,3 +54,5 @@ position = Vector2( 400, 120 )
 [node name="PlayerHand" parent="." instance=ExtResource( 2 )]
 position = Vector2( 400, 450 )
 [connection signal="pressed" from="NewGame" to="." method="_on_new_game_pressed"]
+[connection signal="pressed" from="Hit" to="." method="_on_new_game_pressed"]
+[connection signal="pressed" from="Stand" to="." method="_on_stand_pressed"]

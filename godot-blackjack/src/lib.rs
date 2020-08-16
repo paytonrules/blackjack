@@ -1,5 +1,5 @@
 use blackjack::deck::{Card, Rank};
-use blackjack::game::{deal, GameState};
+use blackjack::game::{deal, stand, GameState};
 use gdnative::api::AtlasTexture;
 use gdnative::prelude::*;
 
@@ -62,6 +62,22 @@ fn add_card_to_hand(texture: &str, hand: &Node2D) {
     hand.add_child(sprite, false);
 }
 
+fn show_dealer_hole_card(texture: &str, hand: &Node2D) {
+    let resource_loader = ResourceLoader::godot_singleton();
+    let sprite = Sprite::new();
+    let texture = resource_loader
+        .load(texture, "AtlasTexture", false)
+        .and_then(|res| res.cast::<AtlasTexture>())
+        .expect("Couldn't load atlasTexture texture");
+
+    sprite.set_texture(texture);
+    sprite.set_position(Vector2::new(0.0, 0.0));
+    hand.add_child(sprite, false);
+    let hole_texture = hand.get_child(0).unwrap();
+    hand.remove_child(hole_texture);
+    unsafe { hole_texture.assume_unique() }.queue_free();
+}
+
 #[derive(NativeClass)]
 #[inherit(Node2D)]
 struct Hand {}
@@ -118,6 +134,30 @@ impl Blackjack {
             GameState::Draw(_) => {}
         }
     }
+
+    #[export]
+    fn _on_stand_pressed(&mut self, owner: &Node2D) {
+        self.state = stand(&self.state).expect("You could stand at this point");
+
+        match &self.state {
+            GameState::WaitingForPlayer(_) => {}
+            GameState::Ready(_) => {}
+            GameState::DealerWins(context)
+            | GameState::PlayerWins(context)
+            | GameState::Draw(context) => {
+                get_typed_node::<Node2D, _>("./DealerHand", owner, |dealer_hand| {
+                    show_dealer_hole_card(
+                        &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
+                        &dealer_hand,
+                    );
+
+                    for card in context.dealer_hand.cards().skip(2) {
+                        add_card_to_hand(&texture_path_from_card(&card), &dealer_hand);
+                    }
+                });
+            }
+        }
+    }
 }
 
 fn init(handle: InitHandle) {
@@ -130,7 +170,7 @@ godot_init!(init);
 #[cfg(test)]
 mod godot_lib {
     use super::*;
-    use deck::{Card, Rank, Suit};
+    use blackjack::deck::Suit;
 
     #[test]
     fn two_of_diamonds_resource_string_from_card() {
