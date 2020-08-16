@@ -1,5 +1,5 @@
 use blackjack::deck::{Card, Rank};
-use blackjack::game::{deal, stand, GameState};
+use blackjack::game::{deal, hit, stand, GameState};
 use gdnative::api::AtlasTexture;
 use gdnative::prelude::*;
 
@@ -156,6 +156,25 @@ impl Blackjack {
                     }
                 });
             }
+        }
+    }
+
+    #[export]
+    fn _on_hit_pressed(&mut self, owner: &Node2D) {
+        self.state = hit(&self.state).expect("You can hit at this point");
+
+        match &self.state {
+            GameState::WaitingForPlayer(context) => {
+                get_typed_node::<Node2D, _>("./PlayerHand", owner, |player_hand| {
+                    let player_cards = context.player_hand.cards();
+                    let new_card = player_cards.last().unwrap();
+                    add_card_to_hand(&texture_path_from_card(&new_card), &player_hand);
+                })
+            }
+            GameState::Ready(_) => {}
+            GameState::DealerWins(context)
+            | GameState::PlayerWins(context)
+            | GameState::Draw(context) => {}
         }
     }
 }

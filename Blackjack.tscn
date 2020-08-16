@@ -54,5 +54,5 @@ position = Vector2( 400, 120 )
 [node name="PlayerHand" parent="." instance=ExtResource( 2 )]
 position = Vector2( 400, 450 )
 [connection signal="pressed" from="NewGame" to="." method="_on_new_game_pressed"]
-[connection signal="pressed" from="Hit" to="." method="_on_new_game_pressed"]
+[connection signal="pressed" from="Hit" to="." method="_on_hit_pressed"]
 [connection signal="pressed" from="Stand" to="." method="_on_stand_pressed"]
