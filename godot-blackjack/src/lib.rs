@@ -105,6 +105,26 @@ impl Blackjack {
 
     #[export]
     fn _on_new_game_pressed(&mut self, owner: &Node2D) {
+        get_typed_node::<Node2D, _>("./DealerHand", owner, |dealer_hand| {
+            for var in dealer_hand.get_children().iter() {
+                let child = var.try_to_object::<Node2D>();
+                child.map(|node| {
+                    let node = unsafe { node.assume_safe() };
+                    dealer_hand.remove_child(node);
+                    node.queue_free()
+                });
+            }
+        });
+        get_typed_node::<Node2D, _>("./PlayerHand", owner, |player_hand| {
+            for var in player_hand.get_children().iter() {
+                let child = var.try_to_object::<Node2D>();
+                child.map(|node| {
+                    let node = unsafe { node.assume_safe() };
+                    player_hand.remove_child(node);
+                    node.queue_free()
+                });
+            }
+        });
         self.state = deal(&self.state).expect("Dealing has to work, basically");
 
         match &self.state {
