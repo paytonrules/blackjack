@@ -69,13 +69,13 @@ fn show_dealer_hole_card(texture: &str, hand: &Node2D) {
         .load(texture, "AtlasTexture", false)
         .and_then(|res| res.cast::<AtlasTexture>())
         .expect("Couldn't load atlasTexture texture");
-
     sprite.set_texture(texture);
     sprite.set_position(Vector2::new(0.0, 0.0));
-    hand.add_child(sprite, false);
+
     let hole_texture = hand.get_child(0).unwrap();
-    hand.remove_child(hole_texture);
-    unsafe { hole_texture.assume_unique() }.queue_free();
+    let hole_texture = unsafe { hole_texture.assume_unique() };
+    hole_texture.replace_by(sprite, false);
+    hole_texture.queue_free();
 }
 
 #[derive(NativeClass)]
