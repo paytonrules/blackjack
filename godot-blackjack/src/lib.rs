@@ -3,7 +3,20 @@ use blackjack::game::{deal, hit, stand, GameState};
 use gdnative::api::AtlasTexture;
 use gdnative::prelude::*;
 
-pub fn get_typed_node<O, F>(name: &str, owner: &Node, mut f: F)
+fn clear_all_children(node_name: &str, owner: &Node) {
+    get_typed_node::<Node, _>(node_name, owner, |parent| {
+        for var in parent.get_children().iter() {
+            let child = var.try_to_object::<Node>();
+            child.map(|child| {
+                let child = unsafe { child.assume_safe() };
+                parent.remove_child(child);
+                child.queue_free()
+            });
+        }
+    });
+}
+
+fn get_typed_node<O, F>(name: &str, owner: &Node, mut f: F)
 where
     F: FnMut(TRef<O>),
     O: GodotObject + SubClass<Node>,
@@ -105,26 +118,9 @@ impl Blackjack {
 
     #[export]
     fn _on_new_game_pressed(&mut self, owner: &Node2D) {
-        get_typed_node::<Node2D, _>("./DealerHand", owner, |dealer_hand| {
-            for var in dealer_hand.get_children().iter() {
-                let child = var.try_to_object::<Node2D>();
-                child.map(|node| {
-                    let node = unsafe { node.assume_safe() };
-                    dealer_hand.remove_child(node);
-                    node.queue_free()
-                });
-            }
-        });
-        get_typed_node::<Node2D, _>("./PlayerHand", owner, |player_hand| {
-            for var in player_hand.get_children().iter() {
-                let child = var.try_to_object::<Node2D>();
-                child.map(|node| {
-                    let node = unsafe { node.assume_safe() };
-                    player_hand.remove_child(node);
-                    node.queue_free()
-                });
-            }
-        });
+        clear_all_children("./DealerHand", owner);
+        clear_all_children("./PlayerHand", owner);
+
         self.state = deal(&self.state).expect("Dealing has to work, basically");
 
         match &self.state {
