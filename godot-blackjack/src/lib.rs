@@ -178,8 +178,14 @@ impl Blackjack {
             }
 
             GameState::Ready(_) => godot_error!("GameState::Ready Should be impossible!"),
-            GameState::DealerWins(_) => godot_print!("Dealer Blackjack! Handle me!"),
-            GameState::PlayerWins(_) => godot_print!("Player Blackjack! Handle me!"),
+            GameState::DealerWins(context) => {
+                show_full_dealer_hand(owner, &context.dealer_hand);
+                show_result_text(owner, "Dealer BLACKJACK!");
+            }
+            GameState::PlayerWins(context) => {
+                show_full_dealer_hand(owner, &context.dealer_hand);
+                show_result_text(owner, "PLAYER BLACKJACK!");
+            }
             GameState::Draw(_) => godot_error!("GameState::Draw Should be impossible!"),
         }
     }
