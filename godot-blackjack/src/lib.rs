@@ -3,7 +3,7 @@ use blackjack::{
     game::{deal, hit, stand, GameState},
     hand::{DealerHand, Hand},
 };
-use gdnative::api::{AtlasTexture, RichTextLabel};
+use gdnative::api::{AtlasTexture, RichTextLabel, ToolButton};
 use gdnative::prelude::*;
 
 fn clear_all_children(node_name: &str, owner: &Node) {
@@ -116,7 +116,7 @@ fn show_initial_dealer_hand(owner: &Node2D, dealer_hand: &DealerHand) {
     });
 }
 
-fn show_full_dealer_hand(owner: &Node2D, dealer_hand: &DealerHand) {
+fn show_remaining_dealer_hand(owner: &Node2D, dealer_hand: &DealerHand) {
     get_typed_node::<Node2D, _>("./DealerHand", owner, |node| {
         show_dealer_hole_card(
             &texture_path_from_card(&dealer_hand.hole_card().unwrap()),
@@ -124,6 +124,14 @@ fn show_full_dealer_hand(owner: &Node2D, dealer_hand: &DealerHand) {
         );
 
         for card in dealer_hand.cards().skip(2) {
+            add_card_to_hand(&texture_path_from_card(&card), &node);
+        }
+    });
+}
+
+fn show_entire_dealer_hand(owner: &Node2D, dealer_hand: &DealerHand) {
+    get_typed_node::<Node2D, _>("./DealerHand", owner, |node| {
+        for card in dealer_hand.cards() {
             add_card_to_hand(&texture_path_from_card(&card), &node);
         }
     });
@@ -176,17 +184,22 @@ impl Blackjack {
                 show_player_hand(owner, &context.player_hand);
                 show_initial_dealer_hand(owner, &context.dealer_hand);
             }
-
-            GameState::Ready(_) => godot_error!("GameState::Ready Should be impossible!"),
             GameState::DealerWins(context) => {
-                show_full_dealer_hand(owner, &context.dealer_hand);
+                show_player_hand(owner, &context.player_hand);
+                show_entire_dealer_hand(owner, &context.dealer_hand);
                 show_result_text(owner, "Dealer BLACKJACK!");
             }
             GameState::PlayerWins(context) => {
-                show_full_dealer_hand(owner, &context.dealer_hand);
+                show_player_hand(owner, &context.player_hand);
+                show_entire_dealer_hand(owner, &context.dealer_hand);
                 show_result_text(owner, "PLAYER BLACKJACK!");
             }
-            GameState::Draw(_) => godot_error!("GameState::Draw Should be impossible!"),
+            GameState::Draw(context) => {
+                show_player_hand(owner, &context.player_hand);
+                show_entire_dealer_hand(owner, &context.dealer_hand);
+                show_result_text(owner, "Everybody has BLACKJACK!");
+            }
+            GameState::Ready(_) => godot_error!("GameState::Ready Should be impossible!"),
         }
     }
 
@@ -198,19 +211,19 @@ impl Blackjack {
             GameState::WaitingForPlayer(_) => {
                 godot_error!("GameState::WaitingForPlayer Should be impossible!")
             }
-            GameState::Ready(_) => godot_error!("GameState::Ready Should be impossible!"),
             GameState::DealerWins(context) => {
                 show_result_text(owner, "Dealer..WINS!");
-                show_full_dealer_hand(owner, &context.dealer_hand);
+                show_remaining_dealer_hand(owner, &context.dealer_hand);
             }
             GameState::PlayerWins(context) => {
                 show_result_text(owner, "Player..WINS!");
-                show_full_dealer_hand(owner, &context.dealer_hand);
+                show_remaining_dealer_hand(owner, &context.dealer_hand);
             }
             GameState::Draw(context) => {
                 show_result_text(owner, "Draws are like kissing your sister");
-                show_full_dealer_hand(owner, &context.dealer_hand);
+                show_remaining_dealer_hand(owner, &context.dealer_hand);
             }
+            GameState::Ready(_) => godot_error!("GameState::Ready Should be impossible!"),
         }
     }
 
@@ -222,12 +235,49 @@ impl Blackjack {
             GameState::WaitingForPlayer(context) => {
                 show_latest_player_card(owner, &context.player_hand);
             }
-            GameState::Ready(_) => godot_error!("GameState::Ready Should be impossible!"),
-            GameState::DealerWins(context)
-            | GameState::PlayerWins(context)
-            | GameState::Draw(context) => {
+            GameState::DealerWins(context) => {
                 show_latest_player_card(owner, &context.player_hand);
-                show_full_dealer_hand(owner, &context.dealer_hand);
+                show_remaining_dealer_hand(owner, &context.dealer_hand);
+                show_result_text(owner, "Dealer..WINS!");
+            }
+            GameState::PlayerWins(context) => {
+                show_latest_player_card(owner, &context.player_hand);
+                show_remaining_dealer_hand(owner, &context.dealer_hand);
+                show_result_text(owner, "Player..WINS!");
+            }
+            GameState::Draw(context) => {
+                show_latest_player_card(owner, &context.player_hand);
+                show_remaining_dealer_hand(owner, &context.dealer_hand);
+                show_result_text(owner, "Draws are like kissing your sister");
+            }
+            GameState::Ready(_) => godot_error!("GameState::Ready Should be impossible!"),
+        }
+    }
+
+    #[export]
+    fn _process(&self, owner: &Node2D, _delta: f64) {
+        match &self.state {
+            GameState::WaitingForPlayer(_) => {
+                get_typed_node::<ToolButton, _>("./Hit", owner, |node| {
+                    node.set_disabled(false);
+                });
+                get_typed_node::<ToolButton, _>("./Stand", owner, |node| {
+                    node.set_disabled(false);
+                });
+                get_typed_node::<ToolButton, _>("./NewGame", owner, |node| {
+                    node.set_disabled(true);
+                });
+            }
+            _ => {
+                get_typed_node::<ToolButton, _>("./Hit", owner, |node| {
+                    node.set_disabled(true);
+                });
+                get_typed_node::<ToolButton, _>("./Stand", owner, |node| {
+                    node.set_disabled(true);
+                });
+                get_typed_node::<ToolButton, _>("./NewGame", owner, |node| {
+                    node.set_disabled(false);
+                });
             }
         }
     }
