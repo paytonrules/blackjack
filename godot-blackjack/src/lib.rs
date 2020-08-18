@@ -1,5 +1,8 @@
 use blackjack::deck::{Card, Rank};
-use blackjack::game::{deal, hit, stand, GameState};
+use blackjack::{
+    game::{deal, hit, stand, GameState},
+    hand::{DealerHand, Hand},
+};
 use gdnative::api::AtlasTexture;
 use gdnative::prelude::*;
 
@@ -93,19 +96,51 @@ fn show_dealer_hole_card(texture: &str, hand: &Node2D) {
 
 #[derive(NativeClass)]
 #[inherit(Node2D)]
-struct Hand {}
-
-#[methods]
-impl Hand {
-    fn new(_owner: &Node2D) -> Self {
-        Hand {}
-    }
-}
-
-#[derive(NativeClass)]
-#[inherit(Node2D)]
 struct Blackjack {
     state: GameState,
+}
+
+fn show_player_hand(owner: &Node2D, player_hand: &Hand) {
+    get_typed_node::<Node2D, _>("./PlayerHand", owner, |node| {
+        for card in player_hand.cards() {
+            add_card_to_hand(&texture_path_from_card(&card), &node);
+        }
+    });
+}
+
+fn show_initial_dealer_hand(owner: &Node2D, dealer_hand: &DealerHand) {
+    get_typed_node::<Node2D, _>("./DealerHand", owner, |node| {
+        add_card_to_hand(
+            "res://images/playingCardBacks.cardBack_blue1.atlastex",
+            &node,
+        );
+
+        add_card_to_hand(
+            &texture_path_from_card(&dealer_hand.upcard().unwrap()),
+            &node,
+        );
+    });
+}
+
+fn show_full_dealer_hand(owner: &Node2D, dealer_hand: &DealerHand) {
+    get_typed_node::<Node2D, _>("./DealerHand", owner, |node| {
+        show_dealer_hole_card(
+            &texture_path_from_card(&dealer_hand.hole_card().unwrap()),
+            &node,
+        );
+
+        for card in dealer_hand.cards().skip(2) {
+            add_card_to_hand(&texture_path_from_card(&card), &node);
+        }
+    });
+}
+
+fn show_latest_player_card(owner: &Node2D, player_hand: &Hand) {
+    get_typed_node::<Node2D, _>("./PlayerHand", owner, |node| {
+        let player_cards = player_hand.cards();
+        let new_card = player_cards.last().unwrap();
+        add_card_to_hand(&texture_path_from_card(&new_card), &node);
+    })
 }
 
 #[methods]
@@ -125,29 +160,14 @@ impl Blackjack {
 
         match &self.state {
             GameState::WaitingForPlayer(context) => {
-                get_typed_node::<Node2D, _>("./PlayerHand", owner, |player_hand| {
-                    for card in context.player_hand.cards() {
-                        add_card_to_hand(&texture_path_from_card(&card), &player_hand);
-                    }
-                });
-
-                get_typed_node::<Node2D, _>("./DealerHand", owner, |dealer_hand| {
-                    add_card_to_hand(
-                        "res://images/playingCardBacks.cardBack_blue1.atlastex",
-                        &dealer_hand,
-                    );
-
-                    add_card_to_hand(
-                        &texture_path_from_card(&context.dealer_hand.upcard().unwrap()),
-                        &dealer_hand,
-                    );
-                });
+                show_player_hand(owner, &context.player_hand);
+                show_initial_dealer_hand(owner, &context.dealer_hand);
             }
 
-            GameState::Ready(_) => {}
-            GameState::DealerWins(_) => {}
-            GameState::PlayerWins(_) => {}
-            GameState::Draw(_) => {}
+            GameState::Ready(_) => godot_error!("GameState::Ready Should be impossible!"),
+            GameState::DealerWins(_) => godot_print!("Dealer Blackjack! Handle me!"),
+            GameState::PlayerWins(_) => godot_print!("Player Blackjack! Handle me!"),
+            GameState::Draw(_) => godot_error!("GameState::Draw Should be impossible!"),
         }
     }
 
@@ -156,21 +176,14 @@ impl Blackjack {
         self.state = stand(&self.state).expect("You could stand at this point");
 
         match &self.state {
-            GameState::WaitingForPlayer(_) => {}
-            GameState::Ready(_) => {}
+            GameState::WaitingForPlayer(_) => {
+                godot_error!("GameState::WaitingForPlayer Should be impossible!")
+            }
+            GameState::Ready(_) => godot_error!("GameState::Ready Should be impossible!"),
             GameState::DealerWins(context)
             | GameState::PlayerWins(context)
             | GameState::Draw(context) => {
-                get_typed_node::<Node2D, _>("./DealerHand", owner, |dealer_hand| {
-                    show_dealer_hole_card(
-                        &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
-                        &dealer_hand,
-                    );
-
-                    for card in context.dealer_hand.cards().skip(2) {
-                        add_card_to_hand(&texture_path_from_card(&card), &dealer_hand);
-                    }
-                });
+                show_full_dealer_hand(&owner, &context.dealer_hand);
             }
         }
     }
@@ -181,23 +194,21 @@ impl Blackjack {
 
         match &self.state {
             GameState::WaitingForPlayer(context) => {
-                get_typed_node::<Node2D, _>("./PlayerHand", owner, |player_hand| {
-                    let player_cards = context.player_hand.cards();
-                    let new_card = player_cards.last().unwrap();
-                    add_card_to_hand(&texture_path_from_card(&new_card), &player_hand);
-                })
+                show_latest_player_card(&owner, &context.player_hand);
             }
-            GameState::Ready(_) => {}
+            GameState::Ready(_) => godot_error!("GameState::Ready Should be impossible!"),
             GameState::DealerWins(context)
             | GameState::PlayerWins(context)
-            | GameState::Draw(context) => {}
+            | GameState::Draw(context) => {
+                show_latest_player_card(&owner, &context.player_hand);
+                show_full_dealer_hand(&owner, &context.dealer_hand);
+            }
         }
     }
 }
 
 fn init(handle: InitHandle) {
     handle.add_class::<Blackjack>();
-    handle.add_class::<Hand>();
 }
 
 godot_init!(init);
