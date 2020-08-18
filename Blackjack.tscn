@@ -53,6 +53,15 @@ position = Vector2( 400, 120 )
 
 [node name="PlayerHand" parent="." instance=ExtResource( 2 )]
 position = Vector2( 400, 450 )
+
+[node name="Result" type="RichTextLabel" parent="."]
+margin_left = 376.0
+margin_top = 251.0
+margin_right = 575.0
+margin_bottom = 291.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
 [connection signal="pressed" from="NewGame" to="." method="_on_new_game_pressed"]
 [connection signal="pressed" from="Hit" to="." method="_on_hit_pressed"]
 [connection signal="pressed" from="Stand" to="." method="_on_stand_pressed"]

@@ -3,7 +3,7 @@ use blackjack::{
     game::{deal, hit, stand, GameState},
     hand::{DealerHand, Hand},
 };
-use gdnative::api::AtlasTexture;
+use gdnative::api::{AtlasTexture, RichTextLabel};
 use gdnative::prelude::*;
 
 fn clear_all_children(node_name: &str, owner: &Node) {
@@ -94,12 +94,6 @@ fn show_dealer_hole_card(texture: &str, hand: &Node2D) {
     hole_texture.queue_free();
 }
 
-#[derive(NativeClass)]
-#[inherit(Node2D)]
-struct Blackjack {
-    state: GameState,
-}
-
 fn show_player_hand(owner: &Node2D, player_hand: &Hand) {
     get_typed_node::<Node2D, _>("./PlayerHand", owner, |node| {
         for card in player_hand.cards() {
@@ -143,6 +137,24 @@ fn show_latest_player_card(owner: &Node2D, player_hand: &Hand) {
     })
 }
 
+fn show_result_text(owner: &Node2D, result: &str) {
+    get_typed_node::<RichTextLabel, _>("./Result", owner, |node| {
+        node.add_text(result);
+    });
+}
+
+fn clear_result_text(owner: &Node2D) {
+    get_typed_node::<RichTextLabel, _>("./Result", owner, |node| {
+        node.clear();
+    });
+}
+
+#[derive(NativeClass)]
+#[inherit(Node2D)]
+struct Blackjack {
+    state: GameState,
+}
+
 #[methods]
 impl Blackjack {
     fn new(_owner: &Node2D) -> Self {
@@ -155,6 +167,7 @@ impl Blackjack {
     fn _on_new_game_pressed(&mut self, owner: &Node2D) {
         clear_all_children("./DealerHand", owner);
         clear_all_children("./PlayerHand", owner);
+        clear_result_text(owner);
 
         self.state = deal(&self.state).expect("Dealing has to work, basically");
 
@@ -180,10 +193,17 @@ impl Blackjack {
                 godot_error!("GameState::WaitingForPlayer Should be impossible!")
             }
             GameState::Ready(_) => godot_error!("GameState::Ready Should be impossible!"),
-            GameState::DealerWins(context)
-            | GameState::PlayerWins(context)
-            | GameState::Draw(context) => {
-                show_full_dealer_hand(&owner, &context.dealer_hand);
+            GameState::DealerWins(context) => {
+                show_result_text(owner, "Dealer..WINS!");
+                show_full_dealer_hand(owner, &context.dealer_hand);
+            }
+            GameState::PlayerWins(context) => {
+                show_result_text(owner, "Player..WINS!");
+                show_full_dealer_hand(owner, &context.dealer_hand);
+            }
+            GameState::Draw(context) => {
+                show_result_text(owner, "Draws are like kissing your sister");
+                show_full_dealer_hand(owner, &context.dealer_hand);
             }
         }
     }
@@ -194,14 +214,14 @@ impl Blackjack {
 
         match &self.state {
             GameState::WaitingForPlayer(context) => {
-                show_latest_player_card(&owner, &context.player_hand);
+                show_latest_player_card(owner, &context.player_hand);
             }
             GameState::Ready(_) => godot_error!("GameState::Ready Should be impossible!"),
             GameState::DealerWins(context)
             | GameState::PlayerWins(context)
             | GameState::Draw(context) => {
-                show_latest_player_card(&owner, &context.player_hand);
-                show_full_dealer_hand(&owner, &context.dealer_hand);
+                show_latest_player_card(owner, &context.player_hand);
+                show_full_dealer_hand(owner, &context.dealer_hand);
             }
         }
     }
