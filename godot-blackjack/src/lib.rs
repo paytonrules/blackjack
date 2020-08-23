@@ -89,6 +89,17 @@ fn add_card_to_hand(texture: &str, hand: &Node2D) {
         0.0,
     );
 
+    tween.interpolate_property(
+        sprite,
+        "rotation_degrees",
+        0.0,
+        360.0,
+        0.25,
+        Tween::TRANS_LINEAR,
+        Tween::EASE_IN,
+        0.0,
+    );
+
     let tween = unsafe { tween.assume_shared() };
     hand.add_child(tween, false);
     let tween = unsafe { tween.assume_safe() };
