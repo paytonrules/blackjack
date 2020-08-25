@@ -5,37 +5,58 @@ use blackjack::{
 };
 use gdnative::api::{AtlasTexture, RichTextLabel, ToolButton};
 use gdnative::prelude::*;
+use std::error::Error;
+use std::fmt;
 
-fn clear_all_children(node_name: &str, owner: &Node) {
-    get_typed_node::<Node, _>(node_name, owner, |parent| {
-        for var in parent.get_children().iter() {
-            let child = var.try_to_object::<Node>();
-            child.map(|child| {
-                let child = unsafe { child.assume_safe() };
-                parent.remove_child(child);
-                child.queue_free()
-            });
-        }
-    });
+#[derive(Debug)]
+struct FindNodeFailed {
+    details: String,
 }
 
-fn get_typed_node<O, F>(name: &str, owner: &Node, mut f: F)
+impl FindNodeFailed {
+    fn new(msg: &str) -> FindNodeFailed {
+        FindNodeFailed {
+            details: msg.to_string(),
+        }
+    }
+}
+
+impl fmt::Display for FindNodeFailed {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.details)
+    }
+}
+
+impl Error for FindNodeFailed {
+    fn description(&self) -> &str {
+        &self.details
+    }
+}
+
+fn clear_all_children(node_name: &str, owner: &Node) -> Result<(), FindNodeFailed> {
+    let parent = get_typed_node::<Node>(node_name, owner)?;
+    for var in parent.get_children().iter() {
+        let child = var.try_to_object::<Node>();
+        child.map(|child| {
+            let child = unsafe { child.assume_safe() };
+            parent.remove_child(child);
+            child.queue_free()
+        });
+    }
+    Ok(())
+}
+
+fn get_typed_node<'a, O>(name: &str, owner: &'a Node) -> Result<TRef<'a, O>, FindNodeFailed>
 where
-    F: FnMut(TRef<O>),
     O: GodotObject + SubClass<Node>,
 {
-    let node = match owner
+    owner
         .get_node(name)
         .map(|node| unsafe { node.assume_safe() })
         .and_then(|node| node.cast::<O>())
-    {
-        Some(it) => it,
-        _ => {
-            godot_print!("Couldn't find node {:?}", name);
-            return;
-        }
-    };
-    f(node)
+        .ok_or(FindNodeFailed::new(
+            "Node either not found or could not be cast to type",
+        ))
 }
 
 fn rank_as_texture_abbreviation(rank: &Rank) -> String {
@@ -123,7 +144,7 @@ fn show_dealer_hole_card(texture: &str, hand: &Node2D) {
 }
 
 fn show_player_hand(owner: &Node2D, player_hand: &Hand) {
-    get_typed_node::<Node2D, _>("./PlayerHand", owner, |node| {
+    get_typed_node::<Node2D>("./PlayerHand", owner).map(|node| {
         for card in player_hand.cards() {
             add_card_to_hand(&texture_path_from_card(&card), &node);
         }
@@ -131,7 +152,7 @@ fn show_player_hand(owner: &Node2D, player_hand: &Hand) {
 }
 
 fn show_initial_dealer_hand(owner: &Node2D, dealer_hand: &DealerHand) {
-    get_typed_node::<Node2D, _>("./DealerHand", owner, |node| {
+    get_typed_node::<Node2D>("./DealerHand", owner).map(|node| {
         add_card_to_hand(
             "res://images/playingCardBacks.cardBack_blue1.atlastex",
             &node,
@@ -145,7 +166,7 @@ fn show_initial_dealer_hand(owner: &Node2D, dealer_hand: &DealerHand) {
 }
 
 fn show_remaining_dealer_hand(owner: &Node2D, dealer_hand: &DealerHand) {
-    get_typed_node::<Node2D, _>("./DealerHand", owner, |node| {
+    get_typed_node::<Node2D>("./DealerHand", owner).map(|node| {
         show_dealer_hole_card(
             &texture_path_from_card(&dealer_hand.hole_card().unwrap()),
             &node,
@@ -158,7 +179,7 @@ fn show_remaining_dealer_hand(owner: &Node2D, dealer_hand: &DealerHand) {
 }
 
 fn show_entire_dealer_hand(owner: &Node2D, dealer_hand: &DealerHand) {
-    get_typed_node::<Node2D, _>("./DealerHand", owner, |node| {
+    get_typed_node::<Node2D>("./DealerHand", owner).map(|node| {
         for card in dealer_hand.cards() {
             add_card_to_hand(&texture_path_from_card(&card), &node);
         }
@@ -166,21 +187,21 @@ fn show_entire_dealer_hand(owner: &Node2D, dealer_hand: &DealerHand) {
 }
 
 fn show_latest_player_card(owner: &Node2D, player_hand: &Hand) {
-    get_typed_node::<Node2D, _>("./PlayerHand", owner, |node| {
+    get_typed_node::<Node2D>("./PlayerHand", owner).map(|node| {
         let player_cards = player_hand.cards();
         let new_card = player_cards.last().unwrap();
         add_card_to_hand(&texture_path_from_card(&new_card), &node);
-    })
+    });
 }
 
 fn show_result_text(owner: &Node2D, result: &str) {
-    get_typed_node::<RichTextLabel, _>("./Result", owner, |node| {
+    get_typed_node::<RichTextLabel>("./Result", owner).map(|node| {
         node.add_text(result);
     });
 }
 
 fn clear_result_text(owner: &Node2D) {
-    get_typed_node::<RichTextLabel, _>("./Result", owner, |node| {
+    get_typed_node::<RichTextLabel>("./Result", owner).map(|node| {
         node.clear();
     });
 }
@@ -286,24 +307,24 @@ impl Blackjack {
     fn _process(&self, owner: &Node2D, _delta: f64) {
         match &self.state {
             GameState::WaitingForPlayer(_) => {
-                get_typed_node::<ToolButton, _>("./Hit", owner, |node| {
+                get_typed_node::<ToolButton>("./Hit", owner).map(|node| {
                     node.set_disabled(false);
                 });
-                get_typed_node::<ToolButton, _>("./Stand", owner, |node| {
+                get_typed_node::<ToolButton>("./Stand", owner).map(|node| {
                     node.set_disabled(false);
                 });
-                get_typed_node::<ToolButton, _>("./NewGame", owner, |node| {
+                get_typed_node::<ToolButton>("./NewGame", owner).map(|node| {
                     node.set_disabled(true);
                 });
             }
             _ => {
-                get_typed_node::<ToolButton, _>("./Hit", owner, |node| {
+                get_typed_node::<ToolButton>("./Hit", owner).map(|node| {
                     node.set_disabled(true);
                 });
-                get_typed_node::<ToolButton, _>("./Stand", owner, |node| {
+                get_typed_node::<ToolButton>("./Stand", owner).map(|node| {
                     node.set_disabled(true);
                 });
-                get_typed_node::<ToolButton, _>("./NewGame", owner, |node| {
+                get_typed_node::<ToolButton>("./NewGame", owner).map(|node| {
                     node.set_disabled(false);
                 });
             }
