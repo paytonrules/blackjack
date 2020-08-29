@@ -404,6 +404,7 @@ impl Blackjack {
             .expect("Couldn't load atlasTexture texture");
 
         sprite.set_texture(texture);
+        sprite.set_position(Vector2::new(-hand.position().x, -hand.position().y));
 
         let sprite = unsafe { sprite.assume_shared() };
 
