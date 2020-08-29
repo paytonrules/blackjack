@@ -1,10 +1,11 @@
 use blackjack::deck::{Card, Rank};
 use blackjack::{
     game::{deal, hit, stand, GameState},
-    hand::{DealerHand, Hand},
+    hand::DealerHand,
 };
 use gdnative::api::{AtlasTexture, RichTextLabel, ToolButton};
 use gdnative::prelude::*;
+use im::{vector, Vector};
 use std::error::Error;
 use std::fmt;
 
@@ -33,7 +34,7 @@ impl Error for FindNodeFailed {
     }
 }
 
-fn clear_all_children(node_name: &str, owner: &Node) -> Result<(), FindNodeFailed> {
+fn clear_all_children(node_name: &str, owner: TRef<Node2D>) -> Result<(), FindNodeFailed> {
     let parent = get_typed_node::<Node>(node_name, owner)?;
     for var in parent.get_children().iter() {
         let child = var.try_to_object::<Node>();
@@ -46,7 +47,10 @@ fn clear_all_children(node_name: &str, owner: &Node) -> Result<(), FindNodeFaile
     Ok(())
 }
 
-fn get_typed_node<'a, O>(name: &str, owner: &'a Node) -> Result<TRef<'a, O>, FindNodeFailed>
+fn get_typed_node<'a, O>(
+    name: &str,
+    owner: TRef<'a, Node2D, Shared>,
+) -> Result<TRef<'a, O>, FindNodeFailed>
 where
     O: GodotObject + SubClass<Node>,
 {
@@ -85,131 +89,47 @@ fn texture_path_from_card(card: &Card) -> String {
     )
 }
 
-fn add_card_to_hand(texture: &str, hand: &Node2D) {
-    let resource_loader = ResourceLoader::godot_singleton();
-    let sprite = Sprite::new();
-    let texture = resource_loader
-        .load(texture, "AtlasTexture", false)
-        .and_then(|res| res.cast::<AtlasTexture>())
-        .expect("Couldn't load atlasTexture texture");
-
-    let child_count = hand.get_child_count() as f32;
-    sprite.set_texture(texture);
-    let sprite = unsafe { sprite.assume_shared() };
-    hand.add_child(sprite, false);
-
-    let tween = Tween::new();
-    tween.interpolate_property(
-        sprite,
-        "position",
-        Vector2::new(-hand.position().x, -hand.position().y),
-        Vector2::new(child_count * 35.0, 0.0),
-        0.25,
-        Tween::TRANS_LINEAR,
-        Tween::EASE_IN,
-        0.0,
-    );
-
-    tween.interpolate_property(
-        sprite,
-        "rotation_degrees",
-        0.0,
-        360.0,
-        0.25,
-        Tween::TRANS_LINEAR,
-        Tween::EASE_IN,
-        0.0,
-    );
-
-    let tween = unsafe { tween.assume_shared() };
-    hand.add_child(tween, false);
-    let tween = unsafe { tween.assume_safe() };
-    tween.start();
-}
-
-fn show_dealer_hole_card(texture: &str, hand: &Node2D) {
-    let resource_loader = ResourceLoader::godot_singleton();
-    let sprite = Sprite::new();
-    let texture = resource_loader
-        .load(texture, "AtlasTexture", false)
-        .and_then(|res| res.cast::<AtlasTexture>())
-        .expect("Couldn't load atlasTexture texture");
-    sprite.set_texture(texture);
-    sprite.set_position(Vector2::new(0.0, 0.0));
-
-    let hole_texture = hand.get_child(0).unwrap();
-    let hole_texture = unsafe { hole_texture.assume_unique() };
-    hole_texture.replace_by(sprite, false);
-    hole_texture.queue_free();
-}
-
-fn show_player_hand(owner: &Node2D, player_hand: &Hand) {
-    get_typed_node::<Node2D>("./PlayerHand", owner).map(|node| {
-        for card in player_hand.cards() {
-            add_card_to_hand(&texture_path_from_card(&card), &node);
-        }
-    });
-}
-
-fn show_initial_dealer_hand(owner: &Node2D, dealer_hand: &DealerHand) {
-    get_typed_node::<Node2D>("./DealerHand", owner).map(|node| {
-        add_card_to_hand(
-            "res://images/playingCardBacks.cardBack_blue1.atlastex",
-            &node,
-        );
-
-        add_card_to_hand(
-            &texture_path_from_card(&dealer_hand.upcard().unwrap()),
-            &node,
-        );
-    });
-}
-
-fn show_remaining_dealer_hand(owner: &Node2D, dealer_hand: &DealerHand) {
-    get_typed_node::<Node2D>("./DealerHand", owner).map(|node| {
-        show_dealer_hole_card(
-            &texture_path_from_card(&dealer_hand.hole_card().unwrap()),
-            &node,
-        );
-
-        for card in dealer_hand.cards().skip(2) {
-            add_card_to_hand(&texture_path_from_card(&card), &node);
-        }
-    });
-}
-
-fn show_entire_dealer_hand(owner: &Node2D, dealer_hand: &DealerHand) {
-    get_typed_node::<Node2D>("./DealerHand", owner).map(|node| {
-        for card in dealer_hand.cards() {
-            add_card_to_hand(&texture_path_from_card(&card), &node);
-        }
-    });
-}
-
-fn show_latest_player_card(owner: &Node2D, player_hand: &Hand) {
-    get_typed_node::<Node2D>("./PlayerHand", owner).map(|node| {
-        let player_cards = player_hand.cards();
-        let new_card = player_cards.last().unwrap();
-        add_card_to_hand(&texture_path_from_card(&new_card), &node);
-    });
-}
-
-fn show_result_text(owner: &Node2D, result: &str) {
+fn show_result_text(owner: TRef<Node2D>, result: &str) {
     get_typed_node::<RichTextLabel>("./Result", owner).map(|node| {
         node.add_text(result);
     });
 }
 
-fn clear_result_text(owner: &Node2D) {
+fn clear_result_text(owner: TRef<Node2D>) {
     get_typed_node::<RichTextLabel>("./Result", owner).map(|node| {
         node.clear();
     });
+}
+
+fn show_dealer_hole_card(owner: TRef<Node2D>, texture: &str) {
+    get_typed_node::<Node2D>("./DealerHand", owner).map(|dealer_hand_node| {
+        let resource_loader = ResourceLoader::godot_singleton();
+        let sprite = Sprite::new();
+        let texture = resource_loader
+            .load(texture, "AtlasTexture", false)
+            .and_then(|res| res.cast::<AtlasTexture>())
+            .expect("Couldn't load atlasTexture texture");
+        sprite.set_texture(texture);
+        sprite.set_position(Vector2::new(0.0, 0.0));
+
+        let hole_texture = dealer_hand_node.get_child(0).unwrap();
+        let hole_texture = unsafe { hole_texture.assume_unique() };
+        hole_texture.replace_by(sprite, false);
+        hole_texture.queue_free();
+    });
+}
+
+#[derive(Clone)]
+struct CardAnimationProperties {
+    destination_node: Ref<Node2D>,
+    texture_name: String,
 }
 
 #[derive(NativeClass)]
 #[inherit(Node2D)]
 struct Blackjack {
     state: GameState,
+    animations: Vector<CardAnimationProperties>,
 }
 
 #[methods]
@@ -217,94 +137,163 @@ impl Blackjack {
     fn new(_owner: &Node2D) -> Self {
         Blackjack {
             state: GameState::new(),
+            animations: vector!(),
         }
     }
 
     #[export]
-    fn _on_new_game_pressed(&mut self, owner: &Node2D) {
+    fn _on_new_game_pressed(&mut self, owner: TRef<Node2D>) {
         clear_all_children("./DealerHand", owner);
         clear_all_children("./PlayerHand", owner);
         clear_result_text(owner);
 
         self.state = deal(&self.state).expect("Dealing has to work, basically");
 
-        match &self.state {
+        let mut new_cards = match &self.state {
             GameState::WaitingForPlayer(context) => {
-                show_player_hand(owner, &context.player_hand);
-                show_initial_dealer_hand(owner, &context.dealer_hand);
+                let mut animations = self
+                    .get_animations_for_player_cards(owner, &context.player_hand.cards())
+                    .unwrap();
+                animations.extend(
+                    self.get_animations_for_initial_dealer_hand(owner, &context.dealer_hand)
+                        .unwrap(),
+                );
+                animations
             }
-            GameState::DealerWins(context) => {
-                show_player_hand(owner, &context.player_hand);
-                show_entire_dealer_hand(owner, &context.dealer_hand);
+            GameState::DealerWins(context)
+            | GameState::PlayerWins(context)
+            | GameState::Draw(context) => {
+                let mut animations = self
+                    .get_animations_for_player_cards(owner, &context.player_hand.cards())
+                    .unwrap();
+                animations.extend(
+                    self.get_animations_for_dealer_cards(owner, &context.dealer_hand.cards())
+                        .unwrap(),
+                );
+                animations
+            }
+            GameState::Ready(_) => Vector::<CardAnimationProperties>::new(),
+        };
+
+        match &self.state {
+            GameState::WaitingForPlayer(_) => {}
+            GameState::DealerWins(_) => {
                 show_result_text(owner, "Dealer BLACKJACK!");
             }
-            GameState::PlayerWins(context) => {
-                show_player_hand(owner, &context.player_hand);
-                show_entire_dealer_hand(owner, &context.dealer_hand);
+            GameState::PlayerWins(_) => {
                 show_result_text(owner, "PLAYER BLACKJACK!");
             }
-            GameState::Draw(context) => {
-                show_player_hand(owner, &context.player_hand);
-                show_entire_dealer_hand(owner, &context.dealer_hand);
+            GameState::Draw(_) => {
                 show_result_text(owner, "Everybody has BLACKJACK!");
             }
             GameState::Ready(_) => godot_error!("GameState::Ready Should be impossible!"),
         }
+        if new_cards.len() > 0 {
+            let next_card = new_cards.remove(0);
+            self.play_animation(owner, &next_card);
+            self.animations = new_cards;
+        }
     }
 
     #[export]
-    fn _on_stand_pressed(&mut self, owner: &Node2D) {
+    fn _on_stand_pressed(&mut self, owner: TRef<Node2D>) {
         self.state = stand(&self.state).expect("You could stand at this point");
 
         match &self.state {
             GameState::WaitingForPlayer(_) => {
-                godot_error!("GameState::WaitingForPlayer Should be impossible!")
+                godot_error!("GameState::WaitingForPlayer Should be impossible!");
+                Err(FindNodeFailed::new("Not really - invalid state"))
             }
             GameState::DealerWins(context) => {
+                show_dealer_hole_card(
+                    owner,
+                    &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
+                );
                 show_result_text(owner, "Dealer..WINS!");
-                show_remaining_dealer_hand(owner, &context.dealer_hand);
+                self.get_animations_for_dealer_cards(owner, &context.dealer_hand.cards().skip(2))
             }
             GameState::PlayerWins(context) => {
+                show_dealer_hole_card(
+                    owner,
+                    &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
+                );
                 show_result_text(owner, "Player..WINS!");
-                show_remaining_dealer_hand(owner, &context.dealer_hand);
+                self.get_animations_for_dealer_cards(owner, &context.dealer_hand.cards().skip(2))
             }
             GameState::Draw(context) => {
+                show_dealer_hole_card(
+                    owner,
+                    &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
+                );
                 show_result_text(owner, "Draws are like kissing your sister");
-                show_remaining_dealer_hand(owner, &context.dealer_hand);
+                self.get_animations_for_dealer_cards(owner, &context.dealer_hand.cards().skip(2))
             }
-            GameState::Ready(_) => godot_error!("GameState::Ready Should be impossible!"),
+            GameState::Ready(_) => {
+                godot_error!("GameState::Ready Should be impossible!");
+                Err(FindNodeFailed::new("Invalid game state"))
+            }
         }
+        .map(|mut cards| {
+            let next_card = cards.remove(0);
+            self.play_animation(owner, &next_card);
+            self.animations = cards;
+        })
+        .expect("Something good should have happened");
     }
 
     #[export]
-    fn _on_hit_pressed(&mut self, owner: &Node2D) {
+    fn _on_hit_pressed(&mut self, owner: TRef<Node2D>) {
         self.state = hit(&self.state).expect("You can hit at this point");
 
         match &self.state {
-            GameState::WaitingForPlayer(context) => {
-                show_latest_player_card(owner, &context.player_hand);
-            }
+            GameState::WaitingForPlayer(context) => self
+                .get_animation_for_player_card(owner, *context.player_hand.cards().last().unwrap()),
             GameState::DealerWins(context) => {
-                show_latest_player_card(owner, &context.player_hand);
-                show_remaining_dealer_hand(owner, &context.dealer_hand);
                 show_result_text(owner, "Dealer..WINS!");
+                show_dealer_hole_card(
+                    owner,
+                    &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
+                );
+                self.get_animation_for_player_card(
+                    owner,
+                    *context.player_hand.cards().last().unwrap(),
+                )
             }
             GameState::PlayerWins(context) => {
-                show_latest_player_card(owner, &context.player_hand);
-                show_remaining_dealer_hand(owner, &context.dealer_hand);
+                show_dealer_hole_card(
+                    owner,
+                    &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
+                );
                 show_result_text(owner, "Player..WINS!");
+                self.get_animation_for_player_card(
+                    owner,
+                    *context.player_hand.cards().last().unwrap(),
+                )
             }
             GameState::Draw(context) => {
-                show_latest_player_card(owner, &context.player_hand);
-                show_remaining_dealer_hand(owner, &context.dealer_hand);
+                show_dealer_hole_card(
+                    owner,
+                    &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
+                );
                 show_result_text(owner, "Draws are like kissing your sister");
+                self.get_animation_for_player_card(
+                    owner,
+                    *context.player_hand.cards().last().unwrap(),
+                )
             }
-            GameState::Ready(_) => godot_error!("GameState::Ready Should be impossible!"),
+            GameState::Ready(_) => {
+                godot_error!("GameState::Ready Should be impossible!");
+                Err(FindNodeFailed::new("Invalid State!"))
+            }
         }
+        .map(|animation| {
+            self.play_animation(owner, &animation);
+        })
+        .expect("Something went wrong!");
     }
 
     #[export]
-    fn _process(&self, owner: &Node2D, _delta: f64) {
+    fn _process(&self, owner: TRef<Node2D>, _delta: f64) {
         match &self.state {
             GameState::WaitingForPlayer(_) => {
                 get_typed_node::<ToolButton>("./Hit", owner).map(|node| {
@@ -329,6 +318,133 @@ impl Blackjack {
                 });
             }
         }
+    }
+
+    #[export]
+    fn card_dealt(&mut self, owner: TRef<Node2D>) {
+        if self.animations.len() > 0 {
+            let next_animation = self.animations.remove(0);
+            self.play_animation(owner, &next_animation);
+        }
+    }
+
+    fn get_animation_for_player_card(
+        &self,
+        owner: TRef<Node2D>,
+        player_card: Card,
+    ) -> Result<CardAnimationProperties, FindNodeFailed> {
+        self.get_animations_for_player_cards(owner, &vector![player_card])
+            .and_then(|mut animations| {
+                let animation = animations.pop_front();
+                animation.ok_or(FindNodeFailed::new("No animations"))
+            })
+    }
+
+    fn get_animations_for_player_cards(
+        &self,
+        owner: TRef<Node2D>,
+        player_cards: &Vector<Card>,
+    ) -> Result<Vector<CardAnimationProperties>, FindNodeFailed> {
+        get_typed_node::<Node2D>("./PlayerHand", owner).map(|player_hand| {
+            player_cards
+                .iter()
+                .map(|card| CardAnimationProperties {
+                    destination_node: unsafe { player_hand.assume_shared() },
+                    texture_name: texture_path_from_card(card),
+                })
+                .collect()
+        })
+    }
+
+    fn get_animations_for_dealer_cards(
+        &self,
+        owner: TRef<Node2D>,
+        dealer_cards: &Vector<Card>,
+    ) -> Result<Vector<CardAnimationProperties>, FindNodeFailed> {
+        get_typed_node::<Node2D>("./DealerHand", owner).map(|dealer_node| {
+            dealer_cards
+                .iter()
+                .map(|card| CardAnimationProperties {
+                    destination_node: unsafe { dealer_node.assume_shared() },
+                    texture_name: texture_path_from_card(card),
+                })
+                .collect()
+        })
+    }
+
+    fn get_animations_for_initial_dealer_hand(
+        &self,
+        owner: TRef<Node2D>,
+        dealer_hand: &DealerHand,
+    ) -> Result<Vector<CardAnimationProperties>, FindNodeFailed> {
+        get_typed_node::<Node2D>("./DealerHand", owner).map(|dealer_node| {
+            let dealer_node = unsafe { dealer_node.assume_shared() };
+            vector![
+                CardAnimationProperties {
+                    destination_node: dealer_node,
+                    texture_name: String::from(
+                        "res://images/playingCardBacks.cardBack_blue1.atlastex"
+                    )
+                },
+                CardAnimationProperties {
+                    destination_node: dealer_node,
+                    texture_name: texture_path_from_card(&dealer_hand.upcard().unwrap())
+                }
+            ]
+        })
+    }
+
+    fn play_animation(&self, owner: TRef<Node2D>, props: &CardAnimationProperties) {
+        let hand = unsafe { props.destination_node.assume_safe() };
+        let resource_loader = ResourceLoader::godot_singleton();
+        let sprite = Sprite::new();
+        let texture = resource_loader
+            .load(&props.texture_name, "AtlasTexture", false)
+            .and_then(|res| res.cast::<AtlasTexture>())
+            .expect("Couldn't load atlasTexture texture");
+
+        sprite.set_texture(texture);
+
+        let sprite = unsafe { sprite.assume_shared() };
+
+        let child_count = hand.get_child_count() as f32;
+        hand.add_child(sprite, false);
+
+        let tween = Tween::new();
+        tween.interpolate_property(
+            sprite,
+            "position",
+            Vector2::new(-hand.position().x, -hand.position().y),
+            Vector2::new(child_count * 35.0, 0.0),
+            0.25,
+            Tween::TRANS_LINEAR,
+            Tween::EASE_IN,
+            0.0,
+        );
+
+        tween.interpolate_property(
+            sprite,
+            "rotation_degrees",
+            0.0,
+            360.0,
+            0.25,
+            Tween::TRANS_LINEAR,
+            Tween::EASE_IN,
+            0.0,
+        );
+
+        let tween = unsafe { tween.assume_shared() };
+        hand.add_child(tween, false);
+        let tween = unsafe { tween.assume_safe() };
+
+        tween.start();
+        tween.connect(
+            "tween_all_completed",
+            owner,
+            "card_dealt",
+            VariantArray::new_shared(),
+            0,
+        );
     }
 }
 
