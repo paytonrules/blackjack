@@ -183,20 +183,25 @@ pub fn deal(state: &GameState) -> Result<(GameState, Vector<Action>), Box<dyn Er
     }
 }
 
-pub fn hit(state: &GameState) -> Result<GameState, Box<dyn Error>> {
-    match state {
-        GameState::WaitingForPlayer(context) => {
-            let new_context = context.deal_player_card()?;
+pub fn hit(state: &GameState) -> Result<(GameState, Vector<Action>), Box<dyn Error>> {
+    if let GameState::WaitingForPlayer(context) = state {
+        let new_context = context.deal_player_card()?;
 
-            Ok(match new_context {
-                _ if new_context.player_blackjack() => {
-                    stand(&GameState::WaitingForPlayer(new_context))?
-                }
-                _ if new_context.player_busts() => GameState::DealerWins(new_context),
-                _ => GameState::WaitingForPlayer(new_context),
-            })
-        }
-        _ => Err(Box::new(InvalidStateError {})),
+        Ok(match new_context {
+            _ if new_context.player_blackjack() => (
+                stand(&GameState::WaitingForPlayer(new_context))?,
+                Vector::<Action>::new(),
+            ),
+            _ if new_context.player_busts() => {
+                (GameState::DealerWins(new_context), Vector::<Action>::new())
+            }
+            _ => (
+                GameState::WaitingForPlayer(new_context),
+                Vector::<Action>::new(),
+            ),
+        })
+    } else {
+        Err(Box::new(InvalidStateError {}))
     }
 }
 
@@ -483,7 +488,7 @@ mod game_state_machine {
         let context = Context::new_with_cards(cards);
         let (game, _) = deal(&GameState::Ready(context))?;
 
-        let player_hits = hit(&game)?;
+        let (player_hits, _) = hit(&game)?;
 
         match player_hits {
             GameState::WaitingForPlayer(context) => {
@@ -506,7 +511,7 @@ mod game_state_machine {
         let context = Context::new_with_cards(cards);
         let (game, _) = deal(&GameState::Ready(context))?;
 
-        let player_hits = hit(&game)?;
+        let (player_hits, _) = hit(&game)?;
 
         match player_hits {
             GameState::DealerWins(context) => {
@@ -529,7 +534,7 @@ mod game_state_machine {
         let context = Context::new_with_cards(cards);
         let (game, _) = deal(&GameState::Ready(context))?;
 
-        let player_hits = hit(&game)?;
+        let (player_hits, _) = hit(&game)?;
 
         match player_hits {
             GameState::PlayerWins(context) => {
@@ -657,7 +662,7 @@ mod game_state_machine {
         let context = Context::new_with_cards(cards);
         let (game, _) = deal(&GameState::Ready(context))?;
 
-        let player_hits = hit(&game)?;
+        let (player_hits, _) = hit(&game)?;
 
         match player_hits {
             GameState::Draw(context) => {
