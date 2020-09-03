@@ -1,6 +1,6 @@
 use blackjack::deck::{Card, Rank};
 use blackjack::{
-    game::{deal, hit, stand, GameState},
+    game::{deal, hit, stand, Action, GameState},
     hand::DealerHand,
 };
 use gdnative::api::{AtlasTexture, RichTextLabel, ToolButton};
@@ -129,6 +129,7 @@ struct CardAnimationProperties {
 #[inherit(Node2D)]
 struct Blackjack {
     state: GameState,
+    actions: Vector<Action>,
     animations: Vector<CardAnimationProperties>,
 }
 
@@ -137,7 +138,8 @@ impl Blackjack {
     fn new(_owner: &Node2D) -> Self {
         Blackjack {
             state: GameState::new(),
-            animations: vector!(),
+            actions: vector![],
+            animations: vector![],
         }
     }
 
@@ -147,7 +149,9 @@ impl Blackjack {
         clear_all_children("./PlayerHand", owner);
         clear_result_text(owner);
 
-        self.state = deal(&self.state).expect("Dealing has to work, basically");
+        let (state, actions) = deal(&self.state).expect("Dealing has to work, basically");
+        self.state = state;
+        self.actions = actions;
 
         let mut new_cards = match &self.state {
             GameState::WaitingForPlayer(context) => {
@@ -197,7 +201,9 @@ impl Blackjack {
 
     #[export]
     fn _on_stand_pressed(&mut self, owner: TRef<Node2D>) {
-        self.state = stand(&self.state).expect("You could stand at this point");
+        let (state, actions) = stand(&self.state).expect("You could stand at this point");
+        self.state = state;
+        self.actions = actions;
 
         match &self.state {
             GameState::WaitingForPlayer(_) => {
@@ -243,7 +249,9 @@ impl Blackjack {
 
     #[export]
     fn _on_hit_pressed(&mut self, owner: TRef<Node2D>) {
-        self.state = hit(&self.state).expect("You can hit at this point");
+        let (state, actions) = hit(&self.state).expect("You can hit at this point");
+        self.state = state;
+        self.actions = actions;
 
         match &self.state {
             GameState::WaitingForPlayer(context) => self
