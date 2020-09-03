@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                 match command.trim() {
                     "H" | "h" => state_and_actions.0 = hit(&state_and_actions.0)?.0,
-                    "S" | "s" => state_and_actions.0 = stand(&state_and_actions.0)?,
+                    "S" | "s" => state_and_actions.0 = stand(&state_and_actions.0)?.0,
                     _ => {
                         println!("Please try again");
                     }
