@@ -7,7 +7,7 @@ use gdnative::api::{AtlasTexture, RichTextLabel, ToolButton};
 use gdnative::prelude::*;
 use im::{vector, Vector};
 use std::error::Error;
-use std::fmt;
+use std::{cmp::Ordering, fmt};
 
 #[derive(Debug)]
 struct FindNodeFailed {
@@ -301,7 +301,14 @@ impl Blackjack {
     }
 
     #[export]
-    fn _process(&self, owner: TRef<Node2D>, _delta: f64) {
+    fn _process(&mut self, owner: TRef<Node2D>, _delta: f64) {
+        self.sort_actions();
+
+        self.actions.into_iter().for_each(|action| match action {});
+        // sort actions so player cards/dealer cards/any 'game over'
+        // loop through actions, queuing up any animations
+        // play animation
+        // match states below
         match &self.state {
             GameState::WaitingForPlayer(_) => {
                 get_typed_node::<ToolButton>("./Hit", owner).map(|node| {
@@ -455,6 +462,14 @@ impl Blackjack {
             0,
         );
     }
+
+    fn sort_actions(&mut self) {
+        self.actions.sort_by(|a, b| match (a, b) {
+            (Action::NewDealerCards(_), Action::NewPlayerCard(_)) => Ordering::Greater,
+            (Action::NewPlayerCard(_), Action::NewDealerCards(_)) => Ordering::Less,
+            _ => Ordering::Equal,
+        });
+    }
 }
 
 fn init(handle: InitHandle) {
@@ -542,5 +557,44 @@ mod godot_lib {
         let resource = texture_path_from_card(&card);
 
         assert_eq!("res://images/playingCards.cardClubsJ.atlastex", resource);
+    }
+
+    #[test]
+    fn sorting_empty_actions_leaves_it_empty() {
+        let mut blackjack = Blackjack {
+            state: GameState::new(),
+            animations: vector![],
+            actions: vector![],
+        };
+
+        blackjack.sort_actions();
+
+        assert_eq!(blackjack.actions, vector![]);
+    }
+
+    #[test]
+    fn sorting_actions_puts_player_hands_before_dealer_hands() {
+        let irrelevant_card = Card {
+            rank: Rank::Jack,
+            suit: Suit::Club,
+        };
+        let mut blackjack = Blackjack {
+            state: GameState::new(),
+            actions: vector![
+                Action::NewDealerCards(vector![]),
+                Action::NewPlayerCard(irrelevant_card)
+            ],
+            animations: vector![],
+        };
+
+        blackjack.sort_actions();
+
+        assert_eq!(
+            blackjack.actions,
+            vector![
+                Action::NewPlayerCard(irrelevant_card),
+                Action::NewDealerCards(vector![])
+            ]
+        )
     }
 }
