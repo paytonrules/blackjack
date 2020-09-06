@@ -10,7 +10,7 @@ pub enum Action {
     NewPlayerCard(Card),
     NewDealerCards(Vector<Card>),
     PlayerWins,
-    DealerWins,
+    DealerWins(Card),
     Draw,
 }
 
@@ -161,7 +161,10 @@ pub fn deal(state: &GameState) -> Result<(GameState, Vector<Action>), Box<dyn Er
                     (GameState::Draw(new_context), actions)
                 }
                 _ if new_context.dealer_blackjack() => {
-                    let actions = vector![Action::DealerWins, new_hand_action(&new_context)];
+                    let actions = vector![
+                        Action::DealerWins(new_context.dealer_hand.hole_card().unwrap().clone()),
+                        new_hand_action(&new_context)
+                    ];
                     (GameState::DealerWins(new_context), actions)
                 }
                 _ if new_context.player_blackjack() => {
@@ -199,10 +202,16 @@ pub fn hit(state: &GameState) -> Result<(GameState, Vector<Action>), Box<dyn Err
                 actions.push_front(Action::NewPlayerCard(dealt_card));
                 (final_state, actions)
             }
-            _ if new_context.player_busts() => (
-                GameState::DealerWins(new_context),
-                vector![Action::NewPlayerCard(dealt_card), Action::DealerWins],
-            ),
+            _ if new_context.player_busts() => {
+                let hole_card = new_context.dealer_hand.hole_card().unwrap().clone();
+                (
+                    GameState::DealerWins(new_context),
+                    vector![
+                        Action::NewPlayerCard(dealt_card),
+                        Action::DealerWins(hole_card)
+                    ],
+                )
+            }
             _ => (
                 GameState::WaitingForPlayer(new_context),
                 vector![Action::NewPlayerCard(dealt_card)],
@@ -225,7 +234,9 @@ pub fn stand(state: &GameState) -> Result<(GameState, Vector<Action>), Box<dyn E
             };
             Ok(match new_context {
                 _ if new_context.dealer_wins() => {
-                    actions.push_front(Action::DealerWins);
+                    actions.push_front(Action::DealerWins(
+                        new_context.dealer_hand.hole_card().unwrap().clone(),
+                    ));
                     (GameState::DealerWins(new_context), actions)
                 }
                 _ if new_context.player_wins() => {
@@ -422,7 +433,7 @@ mod game_state_machine {
         let (_, actions) = deal(&game_state)?;
 
         assert_eq!(2, actions.len());
-        assert!(actions.contains(&Action::DealerWins));
+        assert!(actions.contains(&Action::DealerWins(dealer_blackjack_hand[1])));
         assert_actions_contains_new_hand(&actions, &dealer_blackjack_hand)
     }
 
@@ -546,7 +557,7 @@ mod game_state_machine {
             GameState::DealerWins(context) => {
                 assert_eq!(context.player_score(), Score(24));
                 assert_eq!(actions.len(), 2);
-                assert!(actions.contains(&Action::DealerWins));
+                assert!(actions.contains(&Action::DealerWins(cards[1])));
                 let new_card_action = actions
                     .iter()
                     .find(|action| match action {
@@ -634,7 +645,7 @@ mod game_state_machine {
                 assert_eq!(context.player_score(), Score(17));
                 assert_eq!(context.dealer_score(), Score(20));
                 assert_eq!(actions.len(), 1);
-                assert!(actions.contains(&Action::DealerWins));
+                assert!(actions.contains(&Action::DealerWins[cards[1]]));
                 Ok(())
             }
             _ => Err(Box::new(InvalidStateError)),
@@ -660,7 +671,7 @@ mod game_state_machine {
                 assert_eq!(context.player_score(), Score(17));
                 assert_eq!(context.dealer_score(), Score(19));
                 assert_eq!(actions.len(), 2);
-                assert!(actions.contains(&Action::DealerWins));
+                assert!(actions.contains(&Action::DealerWins(cards[1])));
                 assert_new_dealer_cards_are(actions, vector![Rank::Three]);
                 Ok(())
             }
