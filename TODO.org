@@ -21,13 +21,51 @@
 ** DONE Show player and dealer hands
 *** DONE Create a "hand" scene and place both on the screen, dealer on top, player on bottom
 ** DONE Hide the hidden card
-** TODO REFACTOR!
+** DONE REFACTOR!
 *** DONE Extract functions for the duplicate code
 *** DONE Reconsider naming (yet again)
-*** TODO Test the code that calculates the position of the card
-** TODO Get Command-line game working
-*** TODO Create a workspace with godot separate from game lib
-*** TODO Move godot code out of lib
+*** DONE Test the code that calculates the position of the card
+** DONE Get Command-line game working
+*** DONE Create a workspace with godot separate from game lib
+**** DONE Remove all gdnative from blackjack lib
+**** DONE Point godot-blackjack at blackjack lib (in toml)
+**** DONE Get godot-blackjack compiling
+**** DONE Update Godot resources to match, and have GUI build
+**** DONE Make main.old back into main.rs and see it running again
+*** DONE Move godot code out of lib
+** DONE Player Interaction
+*** DONE Hit me!
 ** HOLD Extract a utility library for Godot
 - I use a couple functions regularly and I think I want to make them a helper crate that I just always use. But they are probably not ready-for-prime-time yet.
-** TODO Refactor game states to be ~mut self~ so they don't require cloning
+** TODO Have the cards be "dealt" in
+*** TODO Don't deal the next card until the previous is dealt! Async?
+**** DONE Put the animation as a node in the scene
+- Simply hide/show it.
+**** DONE Pass a vector to a "deal_cards" functions
+***** DONE Run an animation for one card
+***** DONE Pass the remaining list of cards to the animation functions
+***** DONE Animate the next dealt card
+***** DONE Animate to the right spot
+***** DONE Animate dealing the hole card for the dealer
+**** HOLD Maybe pull the script out and attach it to the card
+**** DONE Maybe try Tweens instead of the animation player
+***** DONE See if we can add rotation to the tween
+***** DONE Sequential Tweens so they wait one at a time
+****** In the case statement prepare the tweens rather than start them.
+****** Store the list of "tweens to play"
+****** Play the first tween, with "card dealt" as the signal to be called
+****** On card dealt, deal the next card
+***** DONE Delay so cards come one at a time?
+** DONE Remove warnings for unused code
+** TODO Remove duplication of state machines!
+*** TODO Make sure you say when the player/dealer has blackjack (new action)
+*** TODO Say when the dealer busts
+*** DONE Showing the dealer hole card requires the context
+** TODO Bug! Player can win by drawing 21, without dealers chance to tie.
+** TODO Cleanup Result and Option types that just unwrap or expect
+** HOLD Make winning text fun!
+*** TODO Ditto New Game/etc buttons
+**** TODO Refactor to use a UI node
+**** TODO Get cool fonts
+** HOLD Refactor game states to be ~mut self~ so they don't require cloning
+** HOLD Make the felt look like ...felt
