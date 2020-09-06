@@ -155,68 +155,25 @@ impl Blackjack {
     }
 
     #[export]
-    fn _on_stand_pressed(&mut self, owner: TRef<Node2D>) {
+    fn _on_stand_pressed(&mut self, _owner: TRef<Node2D>) {
         let (state, actions) = stand(&self.state).expect("You could stand at this point");
         self.state = state;
         self.actions = actions;
-
-        match &self.state {
-            GameState::WaitingForPlayer(_) => {
-                godot_error!("GameState::WaitingForPlayer Should be impossible!");
-            }
-            GameState::DealerWins(context) => {}
-            GameState::PlayerWins(context) => {
-                show_dealer_hole_card(
-                    owner,
-                    &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
-                );
-            }
-            GameState::Draw(context) => {
-                show_dealer_hole_card(
-                    owner,
-                    &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
-                );
-            }
-            GameState::Ready(_) => {
-                godot_error!("GameState::Ready Should be impossible!");
-            }
-        }
     }
 
     #[export]
-    fn _on_hit_pressed(&mut self, owner: TRef<Node2D>) {
+    fn _on_hit_pressed(&mut self, _owner: TRef<Node2D>) {
         let (state, actions) = hit(&self.state).expect("You can hit at this point");
         self.state = state;
         self.actions = actions;
-
-        match &self.state {
-            GameState::WaitingForPlayer(_) => {}
-            GameState::DealerWins(context) => {}
-            GameState::PlayerWins(context) => {
-                show_dealer_hole_card(
-                    owner,
-                    &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
-                );
-            }
-            GameState::Draw(context) => {
-                show_dealer_hole_card(
-                    owner,
-                    &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
-                );
-            }
-            GameState::Ready(_) => {
-                godot_error!("GameState::Ready Should be impossible!");
-            }
-        }
     }
 
     #[export]
     fn _process(&mut self, owner: TRef<Node2D>, _delta: f64) {
         self.process_animations(owner);
         self.actions.iter().for_each(|action| match action {
-            Action::DealerWins(hole_card) => {
+            Action::DealerWins => {
                 show_result_text(owner, "Dealer..WINS!");
-                show_dealer_hole_card(owner, &texture_path_from_card(&hole_card));
             }
             Action::Draw => {
                 show_result_text(owner, "Draws are like kissing your sister");
@@ -224,9 +181,10 @@ impl Blackjack {
             Action::PlayerWins => {
                 show_result_text(owner, "Player..WINS!");
             }
-            Action::NewHand(_, _) => {}
-            Action::NewDealerCards(_) => {}
-            Action::NewPlayerCard(_) => {}
+            Action::ShowDealerHoleCard(hole_card) => {
+                show_dealer_hole_card(owner, &texture_path_from_card(&hole_card));
+            }
+            _ => {}
         });
         self.actions.clear();
 

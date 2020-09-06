@@ -10,8 +10,9 @@ pub enum Action {
     NewPlayerCard(Card),
     NewDealerCards(Vector<Card>),
     PlayerWins,
-    DealerWins(Card),
+    DealerWins,
     Draw,
+    ShowDealerHoleCard(Card),
 }
 
 #[derive(Debug, PartialEq)]
@@ -157,18 +158,33 @@ pub fn deal(state: &GameState) -> Result<(GameState, Vector<Action>), Box<dyn Er
 
             Ok(match new_context {
                 _ if new_context.double_blackjack() => {
-                    let actions = vector![Action::Draw, new_hand_action(&new_context)];
+                    let actions = vector![
+                        Action::Draw,
+                        Action::ShowDealerHoleCard(
+                            new_context.dealer_hand.hole_card().unwrap().clone()
+                        ),
+                        new_hand_action(&new_context)
+                    ];
                     (GameState::Draw(new_context), actions)
                 }
                 _ if new_context.dealer_blackjack() => {
                     let actions = vector![
-                        Action::DealerWins(new_context.dealer_hand.hole_card().unwrap().clone()),
+                        Action::DealerWins,
+                        Action::ShowDealerHoleCard(
+                            new_context.dealer_hand.hole_card().unwrap().clone()
+                        ),
                         new_hand_action(&new_context)
                     ];
                     (GameState::DealerWins(new_context), actions)
                 }
                 _ if new_context.player_blackjack() => {
-                    let actions = vector![Action::PlayerWins, new_hand_action(&new_context)];
+                    let actions = vector![
+                        Action::PlayerWins,
+                        Action::ShowDealerHoleCard(
+                            new_context.dealer_hand.hole_card().unwrap().clone()
+                        ),
+                        new_hand_action(&new_context)
+                    ];
                     (GameState::PlayerWins(new_context), actions)
                 }
                 _ => {
@@ -204,11 +220,13 @@ pub fn hit(state: &GameState) -> Result<(GameState, Vector<Action>), Box<dyn Err
             }
             _ if new_context.player_busts() => {
                 let hole_card = new_context.dealer_hand.hole_card().unwrap().clone();
+
                 (
                     GameState::DealerWins(new_context),
                     vector![
                         Action::NewPlayerCard(dealt_card),
-                        Action::DealerWins(hole_card)
+                        Action::DealerWins,
+                        Action::ShowDealerHoleCard(hole_card)
                     ],
                 )
             }
@@ -228,15 +246,20 @@ pub fn stand(state: &GameState) -> Result<(GameState, Vector<Action>), Box<dyn E
             let new_context = context.play_dealer_hand()?;
             let next_dealer_cards = new_context.dealer_hand.cards().skip(2);
             let mut actions = if next_dealer_cards.len() > 0 {
-                vector![Action::NewDealerCards(next_dealer_cards)]
+                vector![
+                    Action::ShowDealerHoleCard(
+                        new_context.dealer_hand.hole_card().unwrap().clone()
+                    ),
+                    Action::NewDealerCards(next_dealer_cards)
+                ]
             } else {
-                vector![]
+                vector![Action::ShowDealerHoleCard(
+                    new_context.dealer_hand.hole_card().unwrap().clone()
+                )]
             };
             Ok(match new_context {
                 _ if new_context.dealer_wins() => {
-                    actions.push_front(Action::DealerWins(
-                        new_context.dealer_hand.hole_card().unwrap().clone(),
-                    ));
+                    actions.push_front(Action::DealerWins);
                     (GameState::DealerWins(new_context), actions)
                 }
                 _ if new_context.player_wins() => {
@@ -420,20 +443,21 @@ mod game_state_machine {
         let (new_state, _) = deal(&game_state)?;
         match new_state {
             GameState::DealerWins(_) => Ok(()),
-            _ => panic!("Deal transitioned to the wrong state!"),
+            _ => Err(Box::new(InvalidStateError)),
         }
     }
 
     #[test]
-    fn deal_has_two_actions_when_dealer_wins_with_blackjack() -> Result<(), Box<dyn Error>> {
+    fn deal_has_three_actions_when_dealer_wins_with_blackjack() -> Result<(), Box<dyn Error>> {
         let dealer_blackjack_hand = cards(vector!(Rank::Two, Rank::Ace, Rank::Two, Rank::Ten));
         let context = Context::new_with_cards(dealer_blackjack_hand.clone());
         let game_state = GameState::Ready(context);
 
         let (_, actions) = deal(&game_state)?;
 
-        assert_eq!(2, actions.len());
-        assert!(actions.contains(&Action::DealerWins(dealer_blackjack_hand[1])));
+        assert_eq!(3, actions.len());
+        assert!(actions.contains(&Action::DealerWins));
+        assert!(actions.contains(&Action::ShowDealerHoleCard(dealer_blackjack_hand[1])));
         assert_actions_contains_new_hand(&actions, &dealer_blackjack_hand)
     }
 
@@ -457,7 +481,7 @@ mod game_state_machine {
             );
             Ok(())
         } else {
-            panic!("Deal transitioned to the wrong state!");
+            Err(Box::new(InvalidStateError))
         }
     }
 
@@ -470,7 +494,7 @@ mod game_state_machine {
 
         match new_state {
             GameState::Draw(_) => Ok(()),
-            _ => panic!("Deal transitioned to the wrong state!"),
+            _ => Err(Box::new(InvalidStateError)),
         }
     }
 
@@ -481,8 +505,9 @@ mod game_state_machine {
         let context = Context::new_with_cards(double_blackjack.clone());
 
         let (_, actions) = deal(&GameState::Ready(context))?;
-        assert_eq!(2, actions.len());
+        assert_eq!(3, actions.len());
         assert!(actions.contains(&Action::Draw));
+        assert!(actions.contains(&Action::ShowDealerHoleCard(double_blackjack[1])));
         assert_actions_contains_new_hand(&actions, &double_blackjack)
     }
 
@@ -495,7 +520,7 @@ mod game_state_machine {
 
         match new_state {
             GameState::PlayerWins(_) => Ok(()),
-            _ => panic!("Deal transitioned to the wrong state!"),
+            _ => Err(Box::new(InvalidStateError)),
         }
     }
 
@@ -505,8 +530,9 @@ mod game_state_machine {
         let context = Context::new_with_cards(player_blackjack.clone());
 
         let (_, actions) = deal(&GameState::Ready(context))?;
-        assert_eq!(2, actions.len());
+        assert_eq!(3, actions.len());
         assert!(actions.contains(&Action::PlayerWins));
+        assert!(actions.contains(&Action::ShowDealerHoleCard(player_blackjack[1])));
         assert_actions_contains_new_hand(&actions, &player_blackjack)
     }
 
@@ -556,8 +582,9 @@ mod game_state_machine {
         match player_hits {
             GameState::DealerWins(context) => {
                 assert_eq!(context.player_score(), Score(24));
-                assert_eq!(actions.len(), 2);
-                assert!(actions.contains(&Action::DealerWins(cards[1])));
+                assert_eq!(actions.len(), 3);
+                assert!(actions.contains(&Action::DealerWins));
+                assert!(actions.contains(&Action::ShowDealerHoleCard(cards[1])));
                 let new_card_action = actions
                     .iter()
                     .find(|action| match action {
@@ -592,7 +619,8 @@ mod game_state_machine {
         match player_hits {
             GameState::PlayerWins(context) => {
                 assert_eq!(context.player_score(), BLACKJACK);
-                assert_eq!(actions.len(), 2);
+                assert_eq!(actions.len(), 3);
+                assert!(actions.contains(&Action::ShowDealerHoleCard(cards[1])));
                 assert!(actions.contains(&Action::PlayerWins));
                 let new_card_action = actions
                     .iter()
@@ -614,7 +642,7 @@ mod game_state_machine {
     fn player_stands_with_twenty_and_dealer_has_seventeen_player_wins() -> Result<(), Box<dyn Error>>
     {
         let cards = cards(vector!(Rank::Ten, Rank::Ten, Rank::Ten, Rank::Seven));
-        let context = Context::new_with_cards(cards);
+        let context = Context::new_with_cards(cards.clone());
         let (game, _) = deal(&GameState::Ready(context))?;
 
         let (player_stands, actions) = stand(&game)?;
@@ -623,8 +651,9 @@ mod game_state_machine {
             GameState::PlayerWins(context) => {
                 assert_eq!(context.player_score(), Score(20));
                 assert_eq!(context.dealer_score(), Score(17));
-                assert_eq!(actions.len(), 1);
+                assert_eq!(actions.len(), 2);
                 assert!(actions.contains(&Action::PlayerWins));
+                assert!(actions.contains(&Action::ShowDealerHoleCard(cards[1])));
                 Ok(())
             }
             _ => Err(Box::new(InvalidStateError)),
@@ -635,7 +664,7 @@ mod game_state_machine {
     fn player_stands_with_seventeen_and_dealer_has_twenty_dealer_wins() -> Result<(), Box<dyn Error>>
     {
         let cards = cards(vector!(Rank::Ten, Rank::Ten, Rank::Seven, Rank::Ten));
-        let context = Context::new_with_cards(cards);
+        let context = Context::new_with_cards(cards.clone());
         let (game, _) = deal(&GameState::Ready(context))?;
 
         let (player_stands, actions) = stand(&game)?;
@@ -644,8 +673,9 @@ mod game_state_machine {
             GameState::DealerWins(context) => {
                 assert_eq!(context.player_score(), Score(17));
                 assert_eq!(context.dealer_score(), Score(20));
-                assert_eq!(actions.len(), 1);
-                assert!(actions.contains(&Action::DealerWins[cards[1]]));
+                assert_eq!(actions.len(), 2);
+                assert!(actions.contains(&Action::DealerWins));
+                assert!(actions.contains(&Action::ShowDealerHoleCard(cards[1])));
                 Ok(())
             }
             _ => Err(Box::new(InvalidStateError)),
@@ -661,7 +691,7 @@ mod game_state_machine {
             Rank::Six,
             Rank::Three
         ));
-        let context = Context::new_with_cards(cards);
+        let context = Context::new_with_cards(cards.clone());
         let (game, _) = deal(&GameState::Ready(context))?;
 
         let (player_stands, actions) = stand(&game)?;
@@ -670,8 +700,9 @@ mod game_state_machine {
             GameState::DealerWins(context) => {
                 assert_eq!(context.player_score(), Score(17));
                 assert_eq!(context.dealer_score(), Score(19));
-                assert_eq!(actions.len(), 2);
-                assert!(actions.contains(&Action::DealerWins(cards[1])));
+                assert_eq!(actions.len(), 3);
+                assert!(actions.contains(&Action::DealerWins));
+                assert!(actions.contains(&Action::ShowDealerHoleCard(cards[1])));
                 assert_new_dealer_cards_are(actions, vector![Rank::Three]);
                 Ok(())
             }
@@ -682,7 +713,7 @@ mod game_state_machine {
     #[test]
     fn player_stands_with_twenty_and_dealer_has_twenty_draw() -> Result<(), Box<dyn Error>> {
         let cards = cards(vector!(Rank::Ten, Rank::Ten, Rank::Ten, Rank::Ten));
-        let context = Context::new_with_cards(cards);
+        let context = Context::new_with_cards(cards.clone());
         let (game, _) = deal(&GameState::Ready(context))?;
 
         let (player_stands, actions) = stand(&game)?;
@@ -691,7 +722,8 @@ mod game_state_machine {
             GameState::Draw(context) => {
                 assert_eq!(context.player_score(), Score(20));
                 assert_eq!(context.dealer_score(), Score(20));
-                assert_eq!(actions.len(), 1);
+                assert_eq!(actions.len(), 2);
+                assert!(actions.contains(&Action::ShowDealerHoleCard(cards[1])));
                 assert!(actions.contains(&Action::Draw));
                 Ok(())
             }
@@ -722,7 +754,7 @@ mod game_state_machine {
             Rank::Six,
             Rank::Ace
         ));
-        let context = Context::new_with_cards(cards);
+        let context = Context::new_with_cards(cards.clone());
         let (game, _) = deal(&GameState::Ready(context))?;
 
         let (player_stands, actions) = stand(&game)?;
@@ -730,8 +762,9 @@ mod game_state_machine {
         match player_stands {
             GameState::PlayerWins(context) => {
                 assert_eq!(context.dealer_score(), Score(17));
-                assert_eq!(actions.len(), 2);
+                assert_eq!(actions.len(), 3);
                 assert!(actions.contains(&Action::PlayerWins));
+                assert!(actions.contains(&Action::ShowDealerHoleCard(cards[1])));
                 assert_new_dealer_cards_are(actions, vector![Rank::Ace]);
                 Ok(())
             }
@@ -749,7 +782,7 @@ mod game_state_machine {
             Rank::Ace,
             Rank::Four
         ));
-        let context = Context::new_with_cards(cards);
+        let context = Context::new_with_cards(cards.clone());
         let (game, _) = deal(&GameState::Ready(context))?;
 
         let (player_stands, actions) = stand(&game)?;
@@ -757,8 +790,9 @@ mod game_state_machine {
         match player_stands {
             GameState::PlayerWins(context) => {
                 assert_eq!(context.dealer_score(), Score(17));
-                assert_eq!(actions.len(), 2);
+                assert_eq!(actions.len(), 3);
                 assert!(actions.contains(&Action::PlayerWins));
+                assert!(actions.contains(&Action::ShowDealerHoleCard(cards[1])));
                 assert_new_dealer_cards_are(actions, vector![Rank::Ace, Rank::Four]);
                 Ok(())
             }
@@ -777,7 +811,7 @@ mod game_state_machine {
             Rank::Nine
         ));
 
-        let context = Context::new_with_cards(cards);
+        let context = Context::new_with_cards(cards.clone());
         let (game, _) = deal(&GameState::Ready(context))?;
 
         let (player_hits, actions) = hit(&game)?;
@@ -786,8 +820,9 @@ mod game_state_machine {
             GameState::Draw(context) => {
                 assert_eq!(context.dealer_score(), BLACKJACK);
                 assert_eq!(context.player_score(), BLACKJACK);
-                assert_eq!(actions.len(), 3);
+                assert_eq!(actions.len(), 4);
                 assert!(actions.contains(&Action::Draw));
+                assert!(actions.contains(&Action::ShowDealerHoleCard(cards[1])));
                 assert!(actions.contains(&Action::NewPlayerCard(Card {
                     rank: Rank::Ace,
                     suit: Suit::Heart
@@ -808,7 +843,7 @@ mod game_state_machine {
             Rank::Six,
             Rank::Six
         ));
-        let context = Context::new_with_cards(cards);
+        let context = Context::new_with_cards(cards.clone());
         let (game, _) = deal(&GameState::Ready(context))?;
 
         let (dealer_busts, actions) = stand(&game)?;
@@ -817,7 +852,8 @@ mod game_state_machine {
             GameState::PlayerWins(context) => {
                 assert_eq!(context.dealer_score(), Score(22));
                 assert_eq!(context.player_score(), Score(20));
-                assert_eq!(actions.len(), 2);
+                assert_eq!(actions.len(), 3);
+                assert!(actions.contains(&Action::ShowDealerHoleCard(cards[1])));
                 assert!(actions.contains(&Action::PlayerWins));
                 assert_new_dealer_cards_are(actions, vector![Rank::Six]);
                 Ok(())
