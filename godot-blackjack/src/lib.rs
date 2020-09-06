@@ -181,15 +181,9 @@ impl Blackjack {
 
         match &self.state {
             GameState::WaitingForPlayer(_) => {}
-            GameState::DealerWins(_) => {
-                show_result_text(owner, "Dealer BLACKJACK!");
-            }
-            GameState::PlayerWins(_) => {
-                show_result_text(owner, "PLAYER BLACKJACK!");
-            }
-            GameState::Draw(_) => {
-                show_result_text(owner, "Everybody has BLACKJACK!");
-            }
+            GameState::DealerWins(_) => {}
+            GameState::PlayerWins(_) => {}
+            GameState::Draw(_) => {}
             GameState::Ready(_) => godot_error!("GameState::Ready Should be impossible!"),
         }
         if new_cards.len() > 0 {
@@ -215,7 +209,6 @@ impl Blackjack {
                     owner,
                     &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
                 );
-                show_result_text(owner, "Dealer..WINS!");
                 self.get_animations_for_dealer_cards(owner, &context.dealer_hand.cards().skip(2))
             }
             GameState::PlayerWins(context) => {
@@ -223,7 +216,6 @@ impl Blackjack {
                     owner,
                     &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
                 );
-                show_result_text(owner, "Player..WINS!");
                 self.get_animations_for_dealer_cards(owner, &context.dealer_hand.cards().skip(2))
             }
             GameState::Draw(context) => {
@@ -231,7 +223,6 @@ impl Blackjack {
                     owner,
                     &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
                 );
-                show_result_text(owner, "Draws are like kissing your sister");
                 self.get_animations_for_dealer_cards(owner, &context.dealer_hand.cards().skip(2))
             }
             GameState::Ready(_) => {
@@ -257,7 +248,6 @@ impl Blackjack {
             GameState::WaitingForPlayer(context) => self
                 .get_animation_for_player_card(owner, *context.player_hand.cards().last().unwrap()),
             GameState::DealerWins(context) => {
-                show_result_text(owner, "Dealer..WINS!");
                 show_dealer_hole_card(
                     owner,
                     &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
@@ -272,7 +262,6 @@ impl Blackjack {
                     owner,
                     &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
                 );
-                show_result_text(owner, "Player..WINS!");
                 self.get_animation_for_player_card(
                     owner,
                     *context.player_hand.cards().last().unwrap(),
@@ -304,8 +293,21 @@ impl Blackjack {
     fn _process(&mut self, owner: TRef<Node2D>, _delta: f64) {
         self.sort_actions();
 
-        self.actions.into_iter().for_each(|action| match action {});
-        // sort actions so player cards/dealer cards/any 'game over'
+        self.actions.iter().for_each(|action| match action {
+            Action::DealerWins => {
+                show_result_text(owner, "Dealer..WINS!");
+            }
+            Action::Draw => {
+                show_result_text(owner, "Draws are like kissing your sister");
+            }
+            Action::PlayerWins => {
+                show_result_text(owner, "Player..WINS!");
+            }
+            Action::NewHand(_, _) => {}
+            Action::NewDealerCards(_) => {}
+            Action::NewPlayerCard(_) => {}
+        });
+        self.actions.clear();
         // loop through actions, queuing up any animations
         // play animation
         // match states below
