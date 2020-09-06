@@ -152,45 +152,6 @@ impl Blackjack {
         let (state, actions) = deal(&self.state).expect("Dealing has to work, basically");
         self.state = state;
         self.actions = actions;
-
-        let mut new_cards = match &self.state {
-            GameState::WaitingForPlayer(context) => {
-                let mut animations = self
-                    .get_animations_for_player_cards(owner, &context.player_hand.cards())
-                    .unwrap();
-                animations.extend(
-                    self.get_animations_for_initial_dealer_hand(owner, &context.dealer_hand)
-                        .unwrap(),
-                );
-                animations
-            }
-            GameState::DealerWins(context)
-            | GameState::PlayerWins(context)
-            | GameState::Draw(context) => {
-                let mut animations = self
-                    .get_animations_for_player_cards(owner, &context.player_hand.cards())
-                    .unwrap();
-                animations.extend(
-                    self.get_animations_for_dealer_cards(owner, &context.dealer_hand.cards())
-                        .unwrap(),
-                );
-                animations
-            }
-            GameState::Ready(_) => Vector::<CardAnimationProperties>::new(),
-        };
-
-        match &self.state {
-            GameState::WaitingForPlayer(_) => {}
-            GameState::DealerWins(_) => {}
-            GameState::PlayerWins(_) => {}
-            GameState::Draw(_) => {}
-            GameState::Ready(_) => godot_error!("GameState::Ready Should be impossible!"),
-        }
-        if new_cards.len() > 0 {
-            let next_card = new_cards.remove(0);
-            self.play_animation(owner, &next_card);
-            self.animations = new_cards;
-        }
     }
 
     #[export]
@@ -202,40 +163,29 @@ impl Blackjack {
         match &self.state {
             GameState::WaitingForPlayer(_) => {
                 godot_error!("GameState::WaitingForPlayer Should be impossible!");
-                Err(FindNodeFailed::new("Not really - invalid state"))
             }
             GameState::DealerWins(context) => {
                 show_dealer_hole_card(
                     owner,
                     &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
                 );
-                self.get_animations_for_dealer_cards(owner, &context.dealer_hand.cards().skip(2))
             }
             GameState::PlayerWins(context) => {
                 show_dealer_hole_card(
                     owner,
                     &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
                 );
-                self.get_animations_for_dealer_cards(owner, &context.dealer_hand.cards().skip(2))
             }
             GameState::Draw(context) => {
                 show_dealer_hole_card(
                     owner,
                     &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
                 );
-                self.get_animations_for_dealer_cards(owner, &context.dealer_hand.cards().skip(2))
             }
             GameState::Ready(_) => {
                 godot_error!("GameState::Ready Should be impossible!");
-                Err(FindNodeFailed::new("Invalid game state"))
             }
         }
-        .map(|mut cards| {
-            let next_card = cards.remove(0);
-            self.play_animation(owner, &next_card);
-            self.animations = cards;
-        })
-        .expect("Something good should have happened");
     }
 
     #[export]
@@ -245,53 +195,68 @@ impl Blackjack {
         self.actions = actions;
 
         match &self.state {
-            GameState::WaitingForPlayer(context) => self
-                .get_animation_for_player_card(owner, *context.player_hand.cards().last().unwrap()),
+            GameState::WaitingForPlayer(_) => {}
             GameState::DealerWins(context) => {
                 show_dealer_hole_card(
                     owner,
                     &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
                 );
-                self.get_animation_for_player_card(
-                    owner,
-                    *context.player_hand.cards().last().unwrap(),
-                )
             }
             GameState::PlayerWins(context) => {
                 show_dealer_hole_card(
                     owner,
                     &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
                 );
-                self.get_animation_for_player_card(
-                    owner,
-                    *context.player_hand.cards().last().unwrap(),
-                )
             }
             GameState::Draw(context) => {
                 show_dealer_hole_card(
                     owner,
                     &texture_path_from_card(&context.dealer_hand.hole_card().unwrap()),
                 );
-                show_result_text(owner, "Draws are like kissing your sister");
-                self.get_animation_for_player_card(
-                    owner,
-                    *context.player_hand.cards().last().unwrap(),
-                )
             }
             GameState::Ready(_) => {
                 godot_error!("GameState::Ready Should be impossible!");
-                Err(FindNodeFailed::new("Invalid State!"))
             }
         }
-        .map(|animation| {
-            self.play_animation(owner, &animation);
-        })
-        .expect("Something went wrong!");
     }
 
     #[export]
     fn _process(&mut self, owner: TRef<Node2D>, _delta: f64) {
         self.sort_actions();
+
+        let mut animations = self
+            .actions
+            .iter()
+            .filter_map(|action| match action {
+                Action::NewHand(player_hand, dealer_hand) => {
+                    let mut player_animations = self
+                        .get_animations_for_player_cards(owner, &player_hand.cards())
+                        .expect("Error getting animations");
+                    let dealer_animations = self
+                        .get_animations_for_initial_dealer_hand(owner, &dealer_hand)
+                        .expect("Error getting animations");
+                    player_animations.extend(dealer_animations);
+                    Some(player_animations)
+                }
+                Action::NewDealerCards(cards) => {
+                    self.get_animations_for_dealer_cards(owner, cards).ok()
+                }
+                Action::NewPlayerCard(player_card) => self
+                    .get_animation_for_player_card(owner, *player_card)
+                    .map(|card| vector![card])
+                    .ok(),
+                _ => None,
+            })
+            .flatten()
+            .collect::<Vector<CardAnimationProperties>>();
+
+        if self.animations.is_empty() && !animations.is_empty() {
+            let first_animation = animations.pop_front().unwrap();
+            self.animations = animations;
+            self.play_animation(owner, &first_animation);
+        } else {
+            self.animations.extend(animations);
+        }
 
         self.actions.iter().for_each(|action| match action {
             Action::DealerWins => {
@@ -308,9 +273,7 @@ impl Blackjack {
             Action::NewPlayerCard(_) => {}
         });
         self.actions.clear();
-        // loop through actions, queuing up any animations
-        // play animation
-        // match states below
+
         match &self.state {
             GameState::WaitingForPlayer(_) => {
                 get_typed_node::<ToolButton>("./Hit", owner).map(|node| {
