@@ -119,6 +119,26 @@ fn show_dealer_hole_card(owner: TRef<Node2D>, texture: &str) {
     });
 }
 
+fn sort_new_card_actions(mut actions: Vector<Action>) -> Vector<Action> {
+    actions.sort_by(|a, b| match (a, b) {
+        (Action::NewDealerCards(_), Action::NewPlayerCard(_)) => Ordering::Greater,
+        (Action::NewPlayerCard(_), Action::NewDealerCards(_)) => Ordering::Less,
+        _ => Ordering::Equal,
+    });
+    actions
+}
+
+fn filter_new_card_actions(actions: Vector<Action>) -> Vector<Action> {
+    actions
+        .iter()
+        .filter(|action| match action {
+            Action::NewHand(_, _) | Action::NewDealerCards(_) | Action::NewPlayerCard(_) => true,
+            _ => false,
+        })
+        .cloned()
+        .collect::<Vector<Action>>()
+}
+
 #[derive(Clone)]
 struct CardAnimationProperties {
     destination_node: Ref<Node2D>,
@@ -228,10 +248,10 @@ impl Blackjack {
     }
 
     fn process_animations(&mut self, owner: TRef<Node2D>) {
-        self.sort_actions();
+        let deal_actions = filter_new_card_actions(self.actions.clone());
+        let deal_actions = sort_new_card_actions(deal_actions);
 
-        let mut animations = self
-            .actions
+        let mut animations = deal_actions
             .iter()
             .filter_map(|action| match action {
                 Action::NewHand(player_hand, dealer_hand) => {
@@ -396,14 +416,6 @@ impl Blackjack {
             0,
         );
     }
-
-    fn sort_actions(&mut self) {
-        self.actions.sort_by(|a, b| match (a, b) {
-            (Action::NewDealerCards(_), Action::NewPlayerCard(_)) => Ordering::Greater,
-            (Action::NewPlayerCard(_), Action::NewDealerCards(_)) => Ordering::Less,
-            _ => Ordering::Equal,
-        });
-    }
 }
 
 fn init(handle: InitHandle) {
@@ -416,6 +428,7 @@ godot_init!(init);
 mod godot_lib {
     use super::*;
     use blackjack::deck::Suit;
+    use blackjack::hand::{DealerHand, Hand};
 
     #[test]
     fn two_of_diamonds_resource_string_from_card() {
@@ -494,16 +507,10 @@ mod godot_lib {
     }
 
     #[test]
-    fn sorting_empty_actions_leaves_it_empty() {
-        let mut blackjack = Blackjack {
-            state: GameState::new(),
-            animations: vector![],
-            actions: vector![],
-        };
+    fn sorting_empty_action_leaves_it_empty() {
+        let animations = sort_new_card_actions(vector![]);
 
-        blackjack.sort_actions();
-
-        assert_eq!(blackjack.actions, vector![]);
+        assert_eq!(animations, vector![]);
     }
 
     #[test]
@@ -512,23 +519,43 @@ mod godot_lib {
             rank: Rank::Jack,
             suit: Suit::Club,
         };
-        let mut blackjack = Blackjack {
-            state: GameState::new(),
-            actions: vector![
-                Action::NewDealerCards(vector![]),
-                Action::NewPlayerCard(irrelevant_card)
-            ],
-            animations: vector![],
-        };
+        let actions = vector![
+            Action::NewDealerCards(vector![]),
+            Action::NewPlayerCard(irrelevant_card)
+        ];
 
-        blackjack.sort_actions();
+        let new_actions = sort_new_card_actions(actions);
 
         assert_eq!(
-            blackjack.actions,
+            new_actions,
             vector![
                 Action::NewPlayerCard(irrelevant_card),
                 Action::NewDealerCards(vector![])
             ]
         )
+    }
+
+    #[test]
+    fn filter_new_card_actions_keeps_new_card_actions() {
+        let irrelevant_card = Card {
+            rank: Rank::Jack,
+            suit: Suit::Club,
+        };
+        let hand = Hand::new();
+        let dealer_hand = DealerHand::new();
+        let actions = vector![
+            Action::NewHand(hand, dealer_hand),
+            Action::NewDealerCards(vector![]),
+            Action::NewPlayerCard(irrelevant_card)
+        ];
+
+        assert_eq!(actions, filter_new_card_actions(actions.clone()))
+    }
+
+    #[test]
+    fn filter_new_card_actions_removes_anything_else() {
+        let actions = vector![Action::DealerWins, Action::Draw, Action::PlayerWins];
+
+        assert_eq!(vector![], filter_new_card_actions(actions));
     }
 }
