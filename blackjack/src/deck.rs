@@ -1,10 +1,15 @@
 use im::{vector, Vector};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
-use std::error::Error;
-use std::fmt;
 use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum DeckError {
+    #[error("Tried to deal from an empty deck")]
+    Empty,
+}
 
 #[derive(PartialEq, Debug)]
 pub struct Value(pub u8);
@@ -57,17 +62,6 @@ pub struct Card {
     pub rank: Rank,
 }
 
-#[derive(Debug)]
-pub struct EmptyDeckError;
-
-impl Error for EmptyDeckError {}
-
-impl fmt::Display for EmptyDeckError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "You're dealing from an empty deck!")
-    }
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct Deck {
     pub cards: Vector<Card>,
@@ -95,9 +89,9 @@ impl Deck {
         Self::new_with_cards(Vector::from(cards_as_vec))
     }
 
-    pub fn deal(&self) -> Result<(Deck, Card), EmptyDeckError> {
+    pub fn deal(&self) -> Result<(Deck, Card), DeckError> {
         let mut deck = self.clone();
-        let card = deck.cards.pop_front().ok_or(EmptyDeckError)?;
+        let card = deck.cards.pop_front().ok_or(DeckError::Empty)?;
         Ok((deck, card))
     }
 
@@ -137,7 +131,7 @@ mod tests {
     }
 
     #[test]
-    fn deal_takes_the_top_card_off_the_deck() -> Result<(), EmptyDeckError> {
+    fn deal_takes_the_top_card_off_the_deck() -> Result<(), DeckError> {
         let deck = Deck {
             cards: vector!(
                 Card {

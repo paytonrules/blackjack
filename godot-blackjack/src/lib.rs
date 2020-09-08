@@ -6,35 +6,16 @@ use blackjack::{
 use gdnative::api::{AtlasTexture, RichTextLabel, ToolButton};
 use gdnative::prelude::*;
 use im::{vector, Vector};
-use std::error::Error;
-use std::{cmp::Ordering, fmt};
+use std::cmp::Ordering;
+use thiserror::Error;
 
-#[derive(Debug)]
-struct FindNodeFailed {
-    details: String,
+#[derive(Debug, Error)]
+enum GodotError {
+    #[error("{0}")]
+    FindNodeFailed(String),
 }
 
-impl FindNodeFailed {
-    fn new(msg: &str) -> FindNodeFailed {
-        FindNodeFailed {
-            details: msg.to_string(),
-        }
-    }
-}
-
-impl fmt::Display for FindNodeFailed {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.details)
-    }
-}
-
-impl Error for FindNodeFailed {
-    fn description(&self) -> &str {
-        &self.details
-    }
-}
-
-fn clear_all_children(node_name: &str, owner: TRef<Node2D>) -> Result<(), FindNodeFailed> {
+fn clear_all_children(node_name: &str, owner: TRef<Node2D>) -> Result<(), GodotError> {
     let parent = get_typed_node::<Node>(node_name, owner)?;
     for var in parent.get_children().iter() {
         let child = var.try_to_object::<Node>();
@@ -50,7 +31,7 @@ fn clear_all_children(node_name: &str, owner: TRef<Node2D>) -> Result<(), FindNo
 fn get_typed_node<'a, O>(
     name: &str,
     owner: TRef<'a, Node2D, Shared>,
-) -> Result<TRef<'a, O>, FindNodeFailed>
+) -> Result<TRef<'a, O>, GodotError>
 where
     O: GodotObject + SubClass<Node>,
 {
@@ -58,8 +39,8 @@ where
         .get_node(name)
         .map(|node| unsafe { node.assume_safe() })
         .and_then(|node| node.cast::<O>())
-        .ok_or(FindNodeFailed::new(
-            "Node either not found or could not be cast to type",
+        .ok_or(GodotError::FindNodeFailed(
+            "Node either not found or could not be cast to type".to_string(),
         ))
 }
 
@@ -310,11 +291,11 @@ impl Blackjack {
         &self,
         owner: TRef<Node2D>,
         player_card: Card,
-    ) -> Result<CardAnimationProperties, FindNodeFailed> {
+    ) -> Result<CardAnimationProperties, GodotError> {
         self.get_animations_for_player_cards(owner, &vector![player_card])
             .and_then(|mut animations| {
                 let animation = animations.pop_front();
-                animation.ok_or(FindNodeFailed::new("No animations"))
+                animation.ok_or(GodotError::FindNodeFailed("No animations".to_string()))
             })
     }
 
@@ -322,7 +303,7 @@ impl Blackjack {
         &self,
         owner: TRef<Node2D>,
         player_cards: &Vector<Card>,
-    ) -> Result<Vector<CardAnimationProperties>, FindNodeFailed> {
+    ) -> Result<Vector<CardAnimationProperties>, GodotError> {
         get_typed_node::<Node2D>("./PlayerHand", owner).map(|player_hand| {
             player_cards
                 .iter()
@@ -338,7 +319,7 @@ impl Blackjack {
         &self,
         owner: TRef<Node2D>,
         dealer_cards: &Vector<Card>,
-    ) -> Result<Vector<CardAnimationProperties>, FindNodeFailed> {
+    ) -> Result<Vector<CardAnimationProperties>, GodotError> {
         get_typed_node::<Node2D>("./DealerHand", owner).map(|dealer_node| {
             dealer_cards
                 .iter()
@@ -354,7 +335,7 @@ impl Blackjack {
         &self,
         owner: TRef<Node2D>,
         dealer_hand: &DealerHand,
-    ) -> Result<Vector<CardAnimationProperties>, FindNodeFailed> {
+    ) -> Result<Vector<CardAnimationProperties>, GodotError> {
         get_typed_node::<Node2D>("./DealerHand", owner).map(|dealer_node| {
             let dealer_node = unsafe { dealer_node.assume_shared() };
             vector![
