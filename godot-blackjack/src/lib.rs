@@ -208,6 +208,15 @@ impl Blackjack {
                 Action::ShowDealerHoleCard(hole_card) => {
                     show_dealer_hole_card(owner, &texture_path_from_card(&hole_card));
                 }
+                Action::PlayerBusts => {
+                    show_result_text(owner, "Player busts, Dealer WINS!");
+                }
+                Action::PlayerBlackjack => {
+                    show_result_text(owner, "Player has blackjack!");
+                }
+                Action::DealerBusts => {
+                    show_result_text(owner, "Dealer busts...Player WINS!");
+                }
                 _ => {}
             });
             self.actions.clear();

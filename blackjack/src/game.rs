@@ -10,7 +10,10 @@ pub enum Action {
     NewPlayerCard(Card),
     NewDealerCards(Vector<Card>),
     PlayerWins,
+    PlayerBlackjack,
     DealerWins,
+    DealerBusts,
+    PlayerBusts,
     DealerBlackjack,
     Draw,
     ShowDealerHoleCard(Card),
@@ -180,7 +183,7 @@ pub fn deal(state: &GameState) -> Result<(GameState, Vector<Action>), Box<dyn Er
                 }
                 _ if new_context.player_blackjack() => {
                     let actions = vector![
-                        Action::PlayerWins,
+                        Action::PlayerBlackjack,
                         Action::ShowDealerHoleCard(
                             new_context.dealer_hand.hole_card().unwrap().clone()
                         ),
@@ -226,7 +229,7 @@ pub fn hit(state: &GameState) -> Result<(GameState, Vector<Action>), Box<dyn Err
                     GameState::DealerWins(new_context),
                     vector![
                         Action::NewPlayerCard(dealt_card),
-                        Action::DealerWins,
+                        Action::PlayerBusts,
                         Action::ShowDealerHoleCard(hole_card)
                     ],
                 )
@@ -262,6 +265,10 @@ pub fn stand(state: &GameState) -> Result<(GameState, Vector<Action>), Box<dyn E
                 _ if new_context.dealer_wins() => {
                     actions.push_front(Action::DealerWins);
                     (GameState::DealerWins(new_context), actions)
+                }
+                _ if new_context.dealer_busts() => {
+                    actions.push_front(Action::DealerBusts);
+                    (GameState::PlayerWins(new_context), actions)
                 }
                 _ if new_context.player_wins() => {
                     actions.push_front(Action::PlayerWins);
@@ -526,13 +533,13 @@ mod game_state_machine {
     }
 
     #[test]
-    fn player_wins_with_blackjack_has_player_wins_action() -> Result<(), Box<dyn Error>> {
+    fn player_wins_with_blackjack_has_player_blackjack_action() -> Result<(), Box<dyn Error>> {
         let player_blackjack = cards(vector!(Rank::Ace, Rank::Ace, Rank::Ten, Rank::Ace));
         let context = Context::new_with_cards(player_blackjack.clone());
 
         let (_, actions) = deal(&GameState::Ready(context))?;
         assert_eq!(3, actions.len());
-        assert!(actions.contains(&Action::PlayerWins));
+        assert!(actions.contains(&Action::PlayerBlackjack));
         assert!(actions.contains(&Action::ShowDealerHoleCard(player_blackjack[1])));
         assert_actions_contains_new_hand(&actions, &player_blackjack)
     }
@@ -584,7 +591,7 @@ mod game_state_machine {
             GameState::DealerWins(context) => {
                 assert_eq!(context.player_score(), Score(24));
                 assert_eq!(actions.len(), 3);
-                assert!(actions.contains(&Action::DealerWins));
+                assert!(actions.contains(&Action::PlayerBusts));
                 assert!(actions.contains(&Action::ShowDealerHoleCard(cards[1])));
                 let new_card_action = actions
                     .iter()
@@ -855,7 +862,7 @@ mod game_state_machine {
                 assert_eq!(context.player_score(), Score(20));
                 assert_eq!(actions.len(), 3);
                 assert!(actions.contains(&Action::ShowDealerHoleCard(cards[1])));
-                assert!(actions.contains(&Action::PlayerWins));
+                assert!(actions.contains(&Action::DealerBusts));
                 assert_new_dealer_cards_are(actions, vector![Rank::Six]);
                 Ok(())
             }
