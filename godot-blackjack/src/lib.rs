@@ -171,22 +171,27 @@ impl Blackjack {
     #[export]
     fn _process(&mut self, owner: TRef<Node2D>, _delta: f64) {
         self.process_animations(owner);
-        self.actions.iter().for_each(|action| match action {
-            Action::DealerWins => {
-                show_result_text(owner, "Dealer..WINS!");
-            }
-            Action::Draw => {
-                show_result_text(owner, "Draws are like kissing your sister");
-            }
-            Action::PlayerWins => {
-                show_result_text(owner, "Player..WINS!");
-            }
-            Action::ShowDealerHoleCard(hole_card) => {
-                show_dealer_hole_card(owner, &texture_path_from_card(&hole_card));
-            }
-            _ => {}
-        });
-        self.actions.clear();
+        if self.animations.len() <= 0 {
+            self.actions.iter().for_each(|action| match action {
+                Action::DealerBlackjack => {
+                    show_result_text(owner, "Dealer blackjack!");
+                }
+                Action::DealerWins => {
+                    show_result_text(owner, "Dealer..WINS!");
+                }
+                Action::Draw => {
+                    show_result_text(owner, "Draws are like kissing your sister");
+                }
+                Action::PlayerWins => {
+                    show_result_text(owner, "Player..WINS!");
+                }
+                Action::ShowDealerHoleCard(hole_card) => {
+                    show_dealer_hole_card(owner, &texture_path_from_card(&hole_card));
+                }
+                _ => {}
+            });
+            self.actions.clear();
+        }
 
         match &self.state {
             GameState::WaitingForPlayer(_) => {
@@ -258,6 +263,18 @@ impl Blackjack {
         } else {
             self.animations.extend(animations);
         }
+
+        self.actions = self
+            .actions
+            .iter()
+            .filter(|action| match action {
+                Action::NewDealerCards(_) | Action::NewPlayerCard(_) | Action::NewHand(_, _) => {
+                    false
+                }
+                _ => true,
+            })
+            .cloned()
+            .collect::<Vector<Action>>();
     }
 
     fn get_animation_for_player_card(

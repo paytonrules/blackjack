@@ -11,6 +11,7 @@ pub enum Action {
     NewDealerCards(Vector<Card>),
     PlayerWins,
     DealerWins,
+    DealerBlackjack,
     Draw,
     ShowDealerHoleCard(Card),
 }
@@ -169,7 +170,7 @@ pub fn deal(state: &GameState) -> Result<(GameState, Vector<Action>), Box<dyn Er
                 }
                 _ if new_context.dealer_blackjack() => {
                     let actions = vector![
-                        Action::DealerWins,
+                        Action::DealerBlackjack,
                         Action::ShowDealerHoleCard(
                             new_context.dealer_hand.hole_card().unwrap().clone()
                         ),
@@ -456,7 +457,7 @@ mod game_state_machine {
         let (_, actions) = deal(&game_state)?;
 
         assert_eq!(3, actions.len());
-        assert!(actions.contains(&Action::DealerWins));
+        assert!(actions.contains(&Action::DealerBlackjack));
         assert!(actions.contains(&Action::ShowDealerHoleCard(dealer_blackjack_hand[1])));
         assert_actions_contains_new_hand(&actions, &dealer_blackjack_hand)
     }
